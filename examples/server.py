@@ -33,7 +33,7 @@ so = SendObserver("SO", messageBroker)
 ro = ReceiveObserver("RO", messageBroker)
 
 #start the main loop with Interfaces
-main_loop([wsi.serve('192.168.178.42',8765)])
+main_loop([wsi.serve('localhost',8765)])
 
 
 

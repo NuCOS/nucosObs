@@ -77,5 +77,6 @@ setup(name=name,
       packages=packages,
       package_dir=package_dir,
       package_data=package_data,
-      scripts=scripts
+      scripts=scripts,
+      install_requires=['websockets']
       )

@@ -42,4 +42,4 @@ ro = ReceiveObserver("RO", messageBroker)
 ui = StdinInterface(user).get_ui()
 
 #start the main loop with Interfaces
-main_loop([wsi.connect('192.168.178.42',8765), ui])
+main_loop([wsi.connect('localhost',8765), ui])
