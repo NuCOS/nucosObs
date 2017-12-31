@@ -1,4 +1,4 @@
-# nucosMQ
+# nucosObs
 *nucosObs* serves as an observer-observable framework based on asyncio 
 
 ## Install
