@@ -11,7 +11,11 @@ name = "nucosObs"
 
 rootdir = os.path.abspath(os.path.dirname(__file__))
 
-long_description = "a package for observables based on asyncio"
+long_description = """
+
+Dokumentation: [http://nucosObs.readthedocs.io/]
+
+"""
 
 # Python 3.5 or later needed
 if sys.version_info < (3, 5, 0, 'final', 0):

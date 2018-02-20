@@ -115,7 +115,7 @@ class BroadcastObserver(Observer):
         self.obs = allObservables
 
     async def broadcast(self, msg):
-        if debug[-1]:
+        if debug[-1] and msg=="stop":
             print("shut down all observers ...")
         for o in self.obs:
             await o.put(msg)
