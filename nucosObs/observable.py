@@ -20,14 +20,14 @@ class Observable():
     def register(self, observer, concurrent=[]):
         if not concurrent:
             self.q.update({observer.name: aio.Queue(loop=self.loop)})
-            observer.queue = self.q[observer.name]
+            observer._queue = self.q[observer.name]
         else:
             concurrentQueues = []
             for c in concurrent:
                 if c in self.q:
                     concurrentQueues.append(self.q[c])
             if concurrentQueues:
-                observer.queue = concurrentQueues[0]
+                observer._queue = concurrentQueues[0]
             else:
                 raise NoConcurrentObserver("No known observers %s"%concurrent)
 

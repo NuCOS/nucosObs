@@ -1,3 +1,4 @@
+
 import asyncio as aio
 
 from concurrent.futures import ThreadPoolExecutor
@@ -8,19 +9,27 @@ allObservables = []
 loop = aio.get_event_loop()
 debug = [False]
 
-def main_loop(ui):
+
+def get_all_pending_futures(ui=[]):
+    obs = [o.observe for o in allObs]
+    schedules = [o.scheduleLoop
+                 for o in allObs if o.schedule_task is not None]
+    return [*ui, *obs, *schedules]
+
+def main_loop(ui, test=False):
     # the workers should be closed first
     obs = [o.observe() for o in allObs]
-    loop.run_until_complete(aio.gather(*ui, *obs))
+    schedules = [o.scheduleLoop()
+                 for o in allObs if o.schedule_task is not None]
+    loop.run_until_complete(aio.gather(*ui, *obs, *schedules))
     if debug[-1]:
         print("try to shutdown pool")
     pool.shutdown(wait=True)
-    if debug[-1]:
+    if debug[-1] and not test:
         print("try to close loop")
-    loop.close()
+    if not test:
+        loop.close()
 
-from nucosObs.observable import Observable
-from nucosObs.observer import BroadcastObserver
 
-broadcast = Observable()
-broadcastObserver = BroadcastObserver("broadcastObserver", broadcast)
+# from nucosObs.observable import Observable
+# from nucosObs.observer import BroadcastObserver

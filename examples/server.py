@@ -3,8 +3,8 @@ import asyncio as aio
 
 from nucosCR import hexdigest_n
 
-from nucosObs import main_loop, loop, debug, broadcast
-from nucosObs.observer import Observer, inThread
+from nucosObs import main_loop, loop, debug
+from nucosObs.observer import Observer, inThread, broadcast
 from nucosObs.observable import Observable
 from nucosObs.websocketInterface import WebsocketInterface
 

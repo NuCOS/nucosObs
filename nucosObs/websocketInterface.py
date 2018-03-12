@@ -7,7 +7,8 @@ try:
 except:
     import random
     isCR = False
-from nucosObs import loop, debug, broadcast
+from nucosObs import loop, debug 
+from nucosObs.observer import broadcast
 
 class WebsocketInterface(object):
     def __init__(self, broker, auth=None, closeOnClientQuit=False):
