@@ -44,4 +44,4 @@ class TwoWayInterface(object):
                 await aio.sleep(t)
 
         if debug[-1]:
-            print("Two Way Interface stopped")
+            print("Interface stopped")

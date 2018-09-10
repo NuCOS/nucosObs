@@ -16,6 +16,7 @@ def get_all_pending_futures(ui=[]):
                  for o in allObs if o.schedule_task is not None]
     return [*ui, *obs, *schedules]
 
+
 def main_loop(ui, test=False):
     # the workers should be closed first
     obs = [o.observe() for o in allObs]
@@ -24,7 +25,7 @@ def main_loop(ui, test=False):
     loop.run_until_complete(aio.gather(*ui, *obs, *schedules))
     if debug[-1]:
         print("try to shutdown pool")
-    pool.shutdown(wait=True)
+    pool.shutdown(wait=False)
     if debug[-1] and not test:
         print("try to close loop")
     if not test:
