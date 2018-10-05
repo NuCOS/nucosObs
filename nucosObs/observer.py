@@ -71,7 +71,7 @@ class Observer():
         if debug[-1]:
             print("shutdown now...")
         self.stop = True
-        await broadcast.put("broadcast stop")
+        await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
 
     async def scheduleOnce(self, method, t):
         await aio.sleep(t)
@@ -79,21 +79,44 @@ class Observer():
 
     def parse(self, item):
         """
-        Most easiest parse logic. Overwrite this method for compliance with own messages.
+        Dict parse logic + str parse logic, overwrite if necessary
 
-        :param item: the message item to be parsed
-        :type item: str
+        a message is of the form {"name": function-name, "args": [A,B,C,...] }
+        or "function-name A B C"
+
         """
-        items = item.split(" ")
-        item, args = items[0], items[1:]
-        try:
-            method = getattr(self, item)
-        except:
-            method = None
-        if method is None:
-            return False, item, args
+        if isinstance(item, dict):
+            if "name" in item:
+                fct = item["name"]
+            else:
+                fct = None
+            if "args" in item:
+                args = item["args"]
+            else:
+                args = []
+            if hasattr(self, fct):
+                method = getattr(self, fct)
+                if hasattr(method, '__call__'):
+                    return True, method, args
+                else:
+                    return False, None, None
+            else:
+                return False, None, None
+        elif isinstance(item, str):
+            items = item.split(" ")
+            fct, args = items[0], items[1:]
+            
+            if hasattr(self, fct):
+                # print(fct, args)
+                method = getattr(self, fct)
+                if hasattr(method, '__call__'):
+                    return True, method, args
+                else:
+                    return False, None, None
+            else:
+                return False, None, None
         else:
-            return True, method, args
+            return False, None, None
 
     async def scheduleLoop(self):
         self.stop = False
@@ -115,17 +138,12 @@ class Observer():
                 break
             item = await self._queue.get()
             if debug[-1]:
-                print("observer %s received %s"% (self.name , item))
-            if item == "stop":
-                self.stop = True
-                break
+                print("observer %s received %s, type %s"% (self.name , item, type(item)))
             try:
                 isCallable, method, args = self.parse(item)
             except:
-                isCallable = False
-                method = None
-                args = None
-
+                # NOTE for self created parse function and failures therein
+                continue
             if isCallable:
                 if "inThread" in dir(method):
                     await self.loop.run_in_executor(pool, method, *args)
@@ -138,16 +156,21 @@ class Observer():
                             raise NoCallbackException(
                                 "No callback known of method %s" % method)
                 else:
-                    #if isinstance(args, list):
                     future = aio.ensure_future(method(*args))
-                    #else:
-                    #    future = aio.ensure_future(method(args))
                     await future
+            elif isinstance(item, dict) and "action" in item:
+                if item["action"] == "stop_observer":
+                    self.stop = True
+                break
+            elif isinstance(item, str) and "stop_observer" in item:
+                # print(".....", isCallable, method, args, item)
+                self.stop = True
+                break
             else:
                 if debug[-1]:
                     print("swallowed: ", self.name, method, args)
         if debug[-1]:
-            print("%s stopped %s" % (self.name, self.stop))
+            print("--- Observer: %s stopped %s" % (self.name, self.stop))
 
     def set_bridge_method(self, method_name, method_hook):
         """
@@ -171,8 +194,11 @@ class BroadcastObserver(Observer):
         self.obs = allObservables
 
     async def broadcast(self, msg):
-        if debug[-1] and msg == "stop":
-            print("shut down all observers ...")
+        if debug[-1]:
+            print("broadcast ...", msg, type(msg))
+        if "action" in msg:
+            if debug[-1] and msg["action"] == "stop_observer":
+                print("shut down all observers ...")
         for o in self.obs:
             await o.put(msg)
 

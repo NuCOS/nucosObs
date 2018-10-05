@@ -20,6 +20,8 @@ def get_all_pending_futures(ui=[]):
 def main_loop(ui, test=False):
     # the workers should be closed first
     obs = [o.observe() for o in allObs]
+    if debug[-1]:
+        print([o.name for o in allObs])
     schedules = [o.scheduleLoop()
                  for o in allObs if o.schedule_task is not None]
     loop.run_until_complete(aio.gather(*ui, *obs, *schedules))

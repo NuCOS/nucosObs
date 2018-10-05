@@ -2,6 +2,7 @@ import asyncio as aio
 
 from nucosObs import loop, allObservables
 
+
 class NoConcurrentObserver(Exception):
     def __init__(self, message):
         self.message = message

@@ -25,12 +25,16 @@ class StdinInterface(object):
                 self.stop = True
                 t = float(out[-1])
                 await aio.sleep(t)
-                await self.observable.put("shutdown")
+                await self.observable.put({"name": "shutdown", "args": []})
                 break
             if out.endswith('x'):
-                await self.observable.put("shutdown")
+                await self.observable.put({"name": "shutdown", "args": []})
                 break
-            await self.observable.put(out)
+            if out.endswith('say'):
+                await self.observable.put({"name": "say", "args": []})
+            if 'fact' in out:
+                await self.observable.put({"name": "fact", "args": [out.split(" ")[-1]]})
+            # await self.observable.put(out)
         if debug[-1]:
             print("Stdin-Interface stopped")
 
