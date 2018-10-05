@@ -1,6 +1,9 @@
 import websockets
 import asyncio as aio
-
+try:
+    import simplejson as json
+except:
+    import json
 from nucosCR import hexdigest_n
 
 from nucosObs import main_loop, loop, debug
@@ -14,37 +17,47 @@ messageBroker = Observable()
 user = Observable()
 
 
-class AuthObserver(Observer):
-    def __init__(self, name, observable, concurrent=[]):
-        super(AuthObserver, self).__init__(name, observable, concurrent)
+class Authenticator():
+    def __init__(self):
         # next line is for testing purpose and means test-user with pwd: test123
         # for real worl application use another source for user-credentials
-        self.users = {'test-user': '40bcc00ae2166c62a53f8bf86a8bcc62dffe2cec552b66d846da02ebea309b18'}
+        self.users = {
+            'test-user': '7d0bff4edd541774e07692b71c8f1af082682d6f1b158e1c29e156d1838c624b'}
         self.approved = False
 
-    async def startAuth(self, *args):
+    async def startAuth(self, msg, wsi, nonce):
+        inp = json.loads(msg)
+        args = inp["args"]
         try:
-            nonce, user, challenge = args
+            user, challenge, id_ = args["user"], args["challenge"], args["id"]
         except:
-            await self.shutdown()
-        print("start auth") 
-        if self.authenticate(nonce, user, challenge):
-            self.approved = True
-            await wsi.ws.send("endAuth approved")
-            print("Authenticated")
+            return
+        if debug[-1]:
+            print("start auth", msg)
+        if self.authenticate(id_, user, nonce, challenge):
+            
+            context = {"name": "finalizeAuth",
+                       "args": {"authenticated": True},
+                       "action": "authenticated"}
+            await wsi.send(json.dumps(context))
+            if debug[-1]:
+                print("Authenticate accepted")
+            return id_, user
         else:
-            await self.shutdown()
+            context = {"name": "finalizeAuth",
+                       "args": {"authenticated": False},
+                       "action": "authenticated"}
+            await wsi.send(json.dumps(context))
+            if debug[-1]:
+                print("Authenticate refused")
+            return None, None
 
-    def authenticate(self, nonce, user, challenge):
+    def authenticate(self, id_, user, nonce, challenge):
+        # pre = hexdigest_n('test123', 100)
+        # print("PRE local", pre)
         digest = hexdigest_n(self.users[user] + nonce, 100)
-        return digest == challenge 
-
-
-    async def shutdown(self):
-        print("Auth failed")
-        await wsi.ws.send("Auth failed")
-        await wsi.ws.close()
-
+        # print(digest, challenge, pre)
+        return digest == challenge
 
 
 class SendObserver(Observer):
@@ -70,12 +83,11 @@ class ReceiveObserver(Observer):
 
 so = SendObserver("SO", messageBroker)
 ro = ReceiveObserver("RO", messageBroker)
-ao = AuthObserver("AO", messageBroker)
 
-wsi = WebsocketInterface(messageBroker, ao)
+wsi = WebsocketInterface(messageBroker, doAuth=True, closeOnClientQuit=False, authenticator=Authenticator())
 
 #start the main loop with Interfaces
-main_loop([wsi.serve('192.168.178.42',8765)])
+main_loop([wsi.serve('127.0.0.1',8765)])
 
 
 

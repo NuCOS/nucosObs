@@ -3,7 +3,7 @@ import sys
 import random
 import time
 
-from nucosObs import main_loop
+from nucosObs import main_loop, debug
 from nucosObs.observer import Observer, inThread
 from nucosObs.observable import Observable
 from nucosObs.stdinInterface import StdinInterface
@@ -42,6 +42,6 @@ O2 = FactorialObserver("O2", A, concurrent=["O1"])
 O3 = HelloObserver("O3", A)
 ui = StdinInterface(A).get_ui()
 print("type: 'fact 10', 'fact 10', 'say' in short interval")
-
+debug.append(True)
 main_loop([ui])
 
