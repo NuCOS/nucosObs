@@ -1,5 +1,6 @@
 import websockets
 import asyncio as aio
+import ssl 
 try:
     import simplejson as json
 except:
@@ -10,19 +11,39 @@ from nucosObs import main_loop, loop, debug
 from nucosObs.observer import Observer, inThread, broadcast
 from nucosObs.observable import Observable
 from nucosObs.websocketInterface import WebsocketInterface
+from logger import Logger
+logger = Logger("Logger")
+logger.level("INFO")
+
+
 
 debug.append(True)
 
 messageBroker = Observable()
 user = Observable()
+server_cert = 'server.crt'
+server_key = 'server.key'
+client_certs = 'client.crt'
 
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.verify_mode = ssl.CERT_REQUIRED
+context.load_cert_chain(certfile=server_cert, keyfile=server_key)
+context.load_verify_locations(cafile=client_certs)
+# for testing puprose ...
+users = {'test-user': '7d0bff4edd541774e07692b71c8f1af082682d6f1b158e1c29e156d1838c624b'}
+
+def authenticate(id_, user, nonce, challenge):
+    # pre = hexdigest_n('test123', 100)
+    # print("PRE local", pre)
+    digest = hexdigest_n(users[user] + nonce, 100)
+    # print(digest, challenge, pre)
+    return digest == challenge
+
+def check_session_key(key, user):
+    return True
 
 class Authenticator():
     def __init__(self):
-        # next line is for testing purpose and means test-user with pwd: test123
-        # for real worl application use another source for user-credentials
-        self.users = {
-            'test-user': '7d0bff4edd541774e07692b71c8f1af082682d6f1b158e1c29e156d1838c624b'}
         self.approved = False
 
     async def startAuth(self, msg, wsi, nonce):
@@ -31,63 +52,67 @@ class Authenticator():
         try:
             user, challenge, id_ = args["user"], args["challenge"], args["id"]
         except:
-            return
+            return None, user
         if debug[-1]:
             print("start auth", msg)
-        if self.authenticate(id_, user, nonce, challenge):
-            
+        if authenticate(id_, user, nonce, challenge):
             context = {"name": "finalizeAuth",
-                       "args": {"authenticated": True},
+                       "args": {"authenticated": True, "id": id_},
                        "action": "authenticated"}
             await wsi.send(json.dumps(context))
             if debug[-1]:
-                print("Authenticate accepted")
+                print("Authenticate accepted of user %s" % user)
             return id_, user
         else:
             context = {"name": "finalizeAuth",
-                       "args": {"authenticated": False},
+                       "args": {"authenticated": False, "id": id_},
                        "action": "authenticated"}
             await wsi.send(json.dumps(context))
             if debug[-1]:
                 print("Authenticate refused")
-            return None, None
-
-    def authenticate(self, id_, user, nonce, challenge):
-        # pre = hexdigest_n('test123', 100)
-        # print("PRE local", pre)
-        digest = hexdigest_n(self.users[user] + nonce, 100)
-        # print(digest, challenge, pre)
-        return digest == challenge
+            return None, user
 
 
-class SendObserver(Observer):
-    def __init__(self, name, observable, concurrent=[]):
-        super(SendObserver, self).__init__(name, observable, concurrent)
+class WebsocketObserver(Observer):
+    def __init__(self, name, observable, wsi, concurrent=[]):
+        super(WebsocketObserver, self).__init__(name, observable, concurrent)
+        self.wsi = wsi
 
-    async def send(self, *msg):
-        await wsi.ws.send(' '.join(msg))
-        print("message send: %s"%' '.join(msg))
-
-class ReceiveObserver(Observer):
-    def __init__(self, name, observable, concurrent=[]):
-        super(ReceiveObserver, self).__init__(name, observable, concurrent)
-
-    async def print(self, *msg):
-        print("message received: "," ".join(msg))
+    async def send(self, user, session_key, msg):
+        if isinstance(msg, dict):
+            msg = json.dumps(msg)
+        if check_session_key(session_key, user):
+            await self.wsi.ws[session_key].send(msg)
+            logger.log(lvl="INFO", msg="message send: %s %s" % (user, msg))
 
     def parse(self, item):
-        method = self.print
-        args = item.split(" ")
-        return True, method, args
+        logger.log(lvl="INFO", msg="message received: %s" % item)
+        try:
+            item = json.loads(item)
+        except:
+            logger.log("WARNING", msg="no json found ... do nothing")
+            return False, None, None
+        return super(WebsocketObserver, self).parse(item)
+
+    async def addUser(self, user, session_key, new_user, secret):
+        logger.log(lvl="INFO", msg="addUser called %s %s" % (user, new_user))
+        if user == "admin":
+            logger.log(lvl="INFO", msg="new user added %s" % new_user)
+            cache.set(new_user, secret)
+        msg = {
+               "name": "logger",
+               "args": {"log": "addUser called"}
+              }
+        await self.send(user, session_key, msg)
     
 
-so = SendObserver("SO", messageBroker)
-ro = ReceiveObserver("RO", messageBroker)
 
-wsi = WebsocketInterface(messageBroker, doAuth=True, closeOnClientQuit=False, authenticator=Authenticator())
+
+wsi = WebsocketInterface(messageBroker, doAuth=True, closeOnClientQuit=False, authenticator=Authenticator(), ssl=context)
+obs = WebsocketObserver("WSO", messageBroker, wsi)
 
 #start the main loop with Interfaces
-main_loop([wsi.serve('127.0.0.1',8765)])
+main_loop([wsi.serve('127.0.0.1',5000)])
 
 
 

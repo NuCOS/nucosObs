@@ -27,14 +27,15 @@ class StdinInterface(object):
                 await aio.sleep(t)
                 await self.observable.put({"name": "shutdown", "args": []})
                 break
-            if out.endswith('x'):
+            elif out.endswith('x'):
                 await self.observable.put({"name": "shutdown", "args": []})
                 break
-            if out.endswith('say'):
+            elif out.endswith('say'):
                 await self.observable.put({"name": "say", "args": []})
-            if 'fact' in out:
+            elif 'fact' in out:
                 await self.observable.put({"name": "fact", "args": [out.split(" ")[-1]]})
-            # await self.observable.put(out)
+            else:
+                await self.observable.put(out)
         if debug[-1]:
             print("Stdin-Interface stopped")
 

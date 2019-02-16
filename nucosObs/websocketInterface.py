@@ -17,7 +17,7 @@ from nucosObs.observer import broadcast
 
 
 class WebsocketInterface(object):
-    def __init__(self, broker, doAuth=False, closeOnClientQuit=False, authenticator=None):
+    def __init__(self, broker, doAuth=False, closeOnClientQuit=False, authenticator=None, sslClient=None, sslServer=None):
         """
         NOTE: authenticator must have a method: startAuth(msg, wsi)
         """
@@ -28,8 +28,10 @@ class WebsocketInterface(object):
         self.authenticator = authenticator
         self.nonce = {}
         self.isAuthenticated = {}
+        self.isRefused = []
         self.closeOnClientQuit = closeOnClientQuit
-
+        self.sslClient = sslClient
+        self.sslServer = sslServer
         self.approved = []
 
     async def broadcast(self, msg, client=None):
@@ -37,18 +39,22 @@ class WebsocketInterface(object):
             if client is None or i == client:
                 await antenna.send(msg)
 
-    async def connect(self, ip, port):
+    async def connect(self, host, port):
         if debug[-1]:
             print("try to start client")
         # self.server = await websockets.connect(self.handler, ip, port)
-        websocket = await websockets.connect('ws://%s:%s' %(ip,str(port)))
+        if self.sslClient:
+            protocol = "wss"
+        else:
+            protocol = "ws"
+        websocket = await websockets.connect('%s://%s:%s' %(protocol, host, str(port)), ssl=self.sslClient)
         self.ws['client'] = websocket
         await self.listener(websocket, 'client')
 
     async def serve(self, ip, port):
         if debug[-1]:
             print("try to start server")
-        self.server = await websockets.serve(self.handler, ip, port)
+        self.server = await websockets.serve(self.handler, ip, port, ssl=self.sslServer)
         print("started server", self.server)
 
     async def handler(self, websocket, path):
@@ -73,43 +79,51 @@ class WebsocketInterface(object):
 
     async def shutdown(self):
         if debug[-1]:
-            print("Websocket connection closed...")
+            print("in shutdown process ...")
         await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
-        self.server.close()
+        if self.server is not None:
+            for k in [x for x in self.ws.keys()]:
+                await self.ws[k].close()
 
     async def listener(self, ws, id_):
+        user = "unknown"
         while True:
             if ws is not None:
                 if ws.open:
                     try:
                         msg = await ws.recv()
                     except:
-                        if self.server is None:
+                        if id_ == "client":
                             await self.shutdown()
                             break
                         else:
                             msg = ""
                     if msg:
                         if not id_ in self.isAuthenticated and self.doAuth:
-                            id_, user = await self.authenticator.startAuth(msg, ws, self.nonce[id_])
-                            if id_ is not None:
+                            id_out, user = await self.authenticator.startAuth(msg, ws, self.nonce[id_])
+                            if id_out is not None and id_out == id_:
                                 self.isAuthenticated.update({id_: user})
+                            else:
+                                self.ws.pop(id_)
+                                ws.close()
+                                break
                         else:
                             await self.broker.put(msg)
                 else:
-                    if self.server is None:
+                    if id_ == "client":
                         await self.shutdown()
                         break
                     else:
+                        self.ws.pop(id_)
                         if self.closeOnClientQuit:
                             if debug[-1]:
-                                print("client died ...")
-                            self.ws.pop(id_)
+                                print("client died ...")    
                             if len(self.ws) == 0:
                                 await self.broker.put("client exit")
+                                await self.shutdown()
                         if id_ in self.isAuthenticated:
                             self.isAuthenticated.pop(id_)
                         break
 
         if debug[-1]:
-            print("--- WebsocketInterface stopped")
+            print("--- connection of %s stopped " % user)

@@ -73,9 +73,9 @@ class Observer():
         self.stop = True
         await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
 
-    async def scheduleOnce(self, method, t):
+    async def scheduleOnce(self, method, t, *args):
         await aio.sleep(t)
-        await method()
+        await method(*args)
 
     def parse(self, item):
         """
@@ -143,22 +143,23 @@ class Observer():
                 isCallable, method, args = self.parse(item)
             except:
                 # NOTE for self created parse function and failures therein
-                continue
+                if debug[-1]:
+                    print("parse failed: %s" % item)
+                isCallable = False
             if isCallable:
                 if "inThread" in dir(method):
                     await self.loop.run_in_executor(pool, method, *args)
                     if method.callback:
                         if method in self.callbacks:
-                            future = aio.ensure_future(
-                                self.callbacks[method]())
-                            await future
+                            await self.callbacks[method]()
                         else:
                             raise NoCallbackException(
                                 "No callback known of method %s" % method)
                 else:
-                    future = aio.ensure_future(method(*args))
-                    await future
+                    await method(*args)
             elif isinstance(item, dict) and "action" in item:
+                if debug[-1]:
+                    print("....", item)
                 if item["action"] == "stop_observer":
                     self.stop = True
                 break
@@ -168,7 +169,7 @@ class Observer():
                 break
             else:
                 if debug[-1]:
-                    print("swallowed: ", self.name, method, args)
+                    print("swallowed: %s %s" % (self.name, item))
         if debug[-1]:
             print("--- Observer: %s stopped %s" % (self.name, self.stop))
 

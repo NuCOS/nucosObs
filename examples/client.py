@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import asyncio as aio
-
+import ssl
 try:
     import simplejson as json
 except:
@@ -18,24 +18,41 @@ debug.append(True)
 
 messageBroker = Observable()
 user = Observable()
-wsi = WebsocketInterface(messageBroker)
+
+server_cert = 'server.crt'
+client_cert = 'client.crt'
+client_key = 'client.key'
+
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+context.load_verify_locations(cafile=server_cert)
+
+wsi = WebsocketInterface(messageBroker, ssl=context)
 
 
 
-class SendObserver(Observer):
-    def __init__(self, name, observable, concurrent=[]):
-        super(SendObserver, self).__init__(name, observable, concurrent)
-        self.auth = False
-
-    async def send(self, item):
-        await wsi.ws.send(item)
-        print("message send: %s"%item)
-
-class ReceiveObserver(Observer):
+class WebSocketObserver(Observer):
     def __init__(self, name, observable, wsi, concurrent=[]):
-        super(ReceiveObserver, self).__init__(name, observable, concurrent)
+        super(WebSocketObserver, self).__init__(name, observable, concurrent)
         self.wsi = wsi
         self.authenticated = False
+        self.id = ""
+        self.user = "test-user"
+
+    async def logger(self, msg):
+        print("log from server: %s" % msg, type(msg))
+
+    async def send(self, msg):
+        # NOTE inject the session id
+        msg["args"][0] = self.user
+        msg["args"][1] = self.id
+        if isinstance(msg, dict):
+            msg = json.dumps(msg)
+        if wsi.ws['client'].open:
+            await wsi.ws['client'].send(msg)
+            print("message send: %s" % msg)
+        else:
+            print("connection already closed")
       
     def parse(self, item):
         """
@@ -71,7 +88,7 @@ class ReceiveObserver(Observer):
 
     async def doAuth(self, arg):
         print("try auth", arg)
-        user = "test-user"
+        user = self.user
         pwd = "test123"
         pre_digest = hexdigest_n(pwd, 100)
         challenge = hexdigest_n(pre_digest + arg["nonce"], 100)
@@ -82,16 +99,27 @@ class ReceiveObserver(Observer):
         }
         await self.wsi.ws['client'].send(json.dumps(authMsg))
 
-    async def finalizeAuth(self, arg):
+    async def finalizeAuth(self, args):
         print("finalized auth")
-        self.authenticated = arg["authenticated"]
+        self.authenticated = args["authenticated"]
+        self.id = args["id"]
+        if not self.authenticated:
+            print("Auth rejected")
 
         
 
 
-ro = ReceiveObserver("RO", messageBroker, wsi)
-so = SendObserver("SO", user)
-ui = StdinInterface(user).get_ui()
+obs = WebSocketObserver("RO", messageBroker, wsi)
 
+# NOTE to stop stdInInterface enter "x"
+ui = StdinInterface(user).get_ui()
+aio.ensure_future(obs.scheduleOnce(obs.send, 1.0, {"name": "addUser", "args": ["user", "session_key", "new_user", "secret"], "action": 'default'}))
+pwd = "test123"
+pre_digest = hexdigest_n(pwd, 100)
+nonce = "abcde"
+challenge = hexdigest_n(pre_digest + nonce, 100)
+aio.ensure_future(obs.scheduleOnce(obs.send, 1.5, {"name": "authenticateThirdUser", "args": ["user", "session_key", "test-user", nonce, challenge], "action": 'default'}))
 #start the main loop with Interfaces
-main_loop([wsi.connect('127.0.0.1',8765), ui])
+main_loop([wsi.connect('example.com',5001), ui])
+
+
