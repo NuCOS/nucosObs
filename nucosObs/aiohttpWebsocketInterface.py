@@ -122,8 +122,7 @@ class AiohttpWebsocketInterface(object):
                             self.connectedUser.update({user : id_})
                         # print(self.connectedUser, self.ws)
                     else:
-                        self.ws.pop(id_)
-                        ws.close()
+                        await self.ws[id_].close()
                         break
                 else:
                     await self.broker.put(data)
