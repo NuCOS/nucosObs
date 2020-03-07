@@ -60,12 +60,14 @@ class Observer():
         self.callbacks = {}
         self.schedule_time = 1.0
         self.schedule_task = None
+        self.stopTimeFraction = 1
         self.stop = False
         self._bridge_ = {}
 
-    def scheduleRegular(self, method, t):
+    def scheduleRegular(self, method, t, stopTimeFraction=1):
         self.schedule_task = method
         self.schedule_time = t
+        self.stopTimeFraction = stopTimeFraction
 
     async def shutdown(self):
         if debug[-1]:
@@ -105,7 +107,7 @@ class Observer():
         elif isinstance(item, str):
             items = item.split(" ")
             fct, args = items[0], items[1:]
-            
+
             if hasattr(self, fct):
                 # print(fct, args)
                 method = getattr(self, fct)
@@ -121,7 +123,12 @@ class Observer():
     async def scheduleLoop(self):
         self.stop = False
         while not self.stop:
-            await aio.sleep(self.schedule_time)
+            n = 0
+            while n < self.stopTimeFraction:
+                n += 1
+                await aio.sleep(self.schedule_time / self.stopTimeFraction)
+                if self.stop:
+                    break
             if self.schedule_task:
                 await self.schedule_task()
         if debug[-1]:
@@ -138,7 +145,8 @@ class Observer():
                 break
             item = await self._queue.get()
             if debug[-1]:
-                print("observer %s received %s, type %s"% (self.name , item, type(item)))
+                print("observer %s received %s, type %s" %
+                      (self.name, item, type(item)))
             try:
                 isCallable, method, args = self.parse(item)
             except:
