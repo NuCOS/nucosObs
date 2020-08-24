@@ -27,7 +27,7 @@ context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT) # ssl.create_default_context(s
 context.load_cert_chain(certfile=client_cert, keyfile=client_key)
 context.load_verify_locations(cafile=server_cert)
 
-wsi = WebsocketInterface(messageBroker, ssl=context)
+wsi = WebsocketInterface(messageBroker)
 
 
 
@@ -120,6 +120,6 @@ nonce = "abcde"
 challenge = hexdigest_n(pre_digest + nonce, 100)
 aio.ensure_future(obs.scheduleOnce(obs.send, 1.5, {"name": "authenticateThirdUser", "args": ["user", "session_key", "test-user", nonce, challenge], "action": 'default'}))
 #start the main loop with Interfaces
-main_loop([wsi.connect('example.com',5001), ui])
+main_loop([wsi.connect('127.0.0.1', 5000), ui])
 
 

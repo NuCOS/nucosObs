@@ -18,7 +18,8 @@ from nucosObs.observer import broadcast
 
 
 class AiohttpWebsocketInterface(object):
-    def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, authenticator=None, sslClient=None, sslServer=None):
+    def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, authenticator=None, 
+                    receive_timeout=None, sslClient=None, sslServer=None):
         """
         NOTE: authenticator must have a method: startAuth(msg, wsi)
         """
@@ -36,6 +37,7 @@ class AiohttpWebsocketInterface(object):
         self.sslClient = sslClient
         self.sslServer = sslServer
         self.approved = []
+        self.receive_timeout = receive_timeout
         app.router.add_route('GET', '/ws', self.handler)
 
     async def send(self, msg, user):
@@ -85,7 +87,13 @@ class AiohttpWebsocketInterface(object):
                        "args": {"nonce": self.nonce[id_], "id": id_},
                        "action": "authenticate"}
             await ws.send_str(json.dumps(context)) #or send_bytes ??
-        await self.listener(ws, id_)
+        try:
+            await self.listener(ws, id_)
+        except aio.TimeoutError:
+            if debug[-1]:
+                print("timeout....")
+            await ws.close()
+            self.remove_connection(id_)
         # NOTE next line is mandatory for preventing a closed websocket to raise exception
         return ws
 
@@ -99,11 +107,13 @@ class AiohttpWebsocketInterface(object):
 
     async def listener(self, ws, id_):
         user = "unknown"
-
-        async for msg in ws:
+        while True:
+            # async for msg in ws: ---> replaced by ...
+            # if no message arrives after lately 20 secs the connection is closed
+            msg = await ws.receive(timeout=self.receive_timeout)  
             if msg.type == aiohttp.WSMsgType.text:
                 data = msg.data
-                if not id_ in self.isAuthenticated and self.doAuth:
+                if id_ not in self.isAuthenticated and self.doAuth:
                     id_out, user = await self.authenticator.startAuth(data, ws, self.nonce[id_])
                     if id_out is not None and id_out == id_:
                         self.isAuthenticated.update({id_: user})
@@ -117,35 +127,39 @@ class AiohttpWebsocketInterface(object):
                             finally:
                                 if debug[-1]:
                                     print("closed one pending connection of user %s" % user)
-                            self.connectedUser.update({user : id_})
+                            self.connectedUser.update({user: id_})
                         else:
-                            self.connectedUser.update({user : id_})
+                            self.connectedUser.update({user: id_})
                         # print(self.connectedUser, self.ws)
                     else:
                         await self.ws[id_].close()
                         break
                 else:
                     await self.broker.put(data)
+            else:
+                await self.ws[id_].close()
+                break
+        # print("out of order.........")
         if id_ == "client":
             await self.shutdown()
         else:
-            self.ws.pop(id_)
             if self.closeOnClientQuit:
                 if debug[-1]:
                     print("client died ...")    
                 if len(self.ws) == 0:
                     await self.broker.put("client exit")
                     await self.shutdown()
-            if id_ in self.isAuthenticated:
-                user = self.isAuthenticated.pop(id_)
-                if user in self.connectedUser:
-                    self.connectedUser.pop(user)
-                if debug[-1]:
-                    print("after client left:")
-                    print("user...",self.connectedUser)
-                    print("ws.....",self.ws)
-                
-
-
+            self.remove_connection(id_)
         if debug[-1]:
             print("--- connection of %s stopped " % user)
+
+    def remove_connection(self, id_):
+        self.ws.pop(id_)
+        if id_ in self.isAuthenticated:
+            user = self.isAuthenticated.pop(id_)
+            if user in self.connectedUser:
+                self.connectedUser.pop(user)
+        if debug[-1]:
+            print("after client left:")
+            print("user...",self.connectedUser)
+            print("ws.....",self.ws)

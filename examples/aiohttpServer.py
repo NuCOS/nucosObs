@@ -109,13 +109,18 @@ class WebsocketObserver(Observer):
 
 
 app = web.Application()
-wsi = AiohttpWebsocketInterface(app, messageBroker, doAuth=True, closeOnClientQuit=False, authenticator=Authenticator(), ssl=context)
+# use ssl=context for providing ssl configuration
+wsi = AiohttpWebsocketInterface(app, 
+                                messageBroker, 
+                                doAuth=True, 
+                                closeOnClientQuit=False, 
+                                authenticator=Authenticator())
 obs = WebsocketObserver("WSO", messageBroker, wsi)
 
 async def startApp():
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8081)
+    site = web.TCPSite(runner, '0.0.0.0', 5000)
     await site.start()
 
 

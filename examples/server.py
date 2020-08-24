@@ -108,11 +108,15 @@ class WebsocketObserver(Observer):
 
 
 
-wsi = WebsocketInterface(messageBroker, doAuth=True, closeOnClientQuit=False, authenticator=Authenticator(), ssl=context)
+wsi = WebsocketInterface(messageBroker, 
+                         doAuth=True, 
+                         closeOnClientQuit=False, 
+                         authenticator=Authenticator(), 
+                         sslServer=context)
 obs = WebsocketObserver("WSO", messageBroker, wsi)
 
 #start the main loop with Interfaces
-main_loop([wsi.serve('127.0.0.1',5000)])
+main_loop([wsi.serve('127.0.0.1', 5000)])
 
 
 

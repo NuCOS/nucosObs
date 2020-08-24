@@ -30,7 +30,7 @@ class Observable():
             if concurrentQueues:
                 observer._queue = concurrentQueues[0]
             else:
-                raise NoConcurrentObserver("No known observers %s"%concurrent)
+                raise NoConcurrentObserver("No known observers %s" % concurrent)
 
     async def put(self, event):
         for q in self.q.values():

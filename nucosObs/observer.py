@@ -1,5 +1,4 @@
 import asyncio as aio
-import time
 
 from nucosObs import loop, allObs, pool, debug, allObservables
 from nucosObs.observable import Observable

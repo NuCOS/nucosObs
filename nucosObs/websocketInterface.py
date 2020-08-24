@@ -17,7 +17,13 @@ from nucosObs.observer import broadcast
 
 
 class WebsocketInterface(object):
-    def __init__(self, broker, doAuth=False, closeOnClientQuit=False, authenticator=None, sslClient=None, sslServer=None):
+    def __init__(self,
+                 broker,
+                 doAuth=False,
+                 closeOnClientQuit=False,
+                 authenticator=None,
+                 sslClient=None,
+                 sslServer=None):
         """
         NOTE: authenticator must have a method: startAuth(msg, wsi)
         """
@@ -47,7 +53,7 @@ class WebsocketInterface(object):
             protocol = "wss"
         else:
             protocol = "ws"
-        websocket = await websockets.connect('%s://%s:%s' %(protocol, host, str(port)), ssl=self.sslClient)
+        websocket = await websockets.connect('%s://%s:%s/ws' % (protocol, host, str(port)), ssl=self.sslClient)
         self.ws['client'] = websocket
         await self.listener(websocket, 'client')
 
@@ -99,7 +105,7 @@ class WebsocketInterface(object):
                         else:
                             msg = ""
                     if msg:
-                        if not id_ in self.isAuthenticated and self.doAuth:
+                        if id_ not in self.isAuthenticated and self.doAuth:
                             id_out, user = await self.authenticator.startAuth(msg, ws, self.nonce[id_])
                             if id_out is not None and id_out == id_:
                                 self.isAuthenticated.update({id_: user})
