@@ -74,9 +74,9 @@ class Observer():
         self.stop = True
         await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
 
-    async def scheduleOnce(self, method, t, *args):
+    async def scheduleOnce(self, method, t, *args, **kwargs):
         await aio.sleep(t)
-        await method(*args)
+        await method(*args, **kwargs)
 
     def parse(self, item):
         """
