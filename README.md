@@ -1,5 +1,7 @@
 # nucosObs
-*nucosObs* serves as an observer-observable framework based on asyncio 
+*nucosObs* serves as an observer-observable framework based on asyncio
+
+![Current Version PyPI](https://img.shields.io/pypi/v/nucosObs.svg)
 
 ## Install
 ```
