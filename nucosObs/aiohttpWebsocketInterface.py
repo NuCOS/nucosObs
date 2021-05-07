@@ -19,11 +19,13 @@ from nucosObs.observer import broadcast
 
 class AiohttpWebsocketInterface(object):
     def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, authenticator=None, 
-                    receive_timeout=None, sslClient=None, sslServer=None):
+                    receive_timeout=None, sslClient=None, sslServer=None,
+                    route="/ws", backend="main"):
         """
         NOTE: authenticator must have a method: startAuth(msg, wsi)
         """
         self.app = app
+        self.backend = backend
         self.ws = {}
         self.doAuth = doAuth
         self.broker = broker
@@ -38,7 +40,7 @@ class AiohttpWebsocketInterface(object):
         self.sslServer = sslServer
         self.approved = []
         self.receive_timeout = receive_timeout
-        app.router.add_route('GET', '/ws', self.handler)
+        app.router.add_route('GET', route, self.handler)
 
     async def send(self, msg, user):
         id_ = self.connectedUser.get(user)
@@ -85,7 +87,8 @@ class AiohttpWebsocketInterface(object):
                 self.nonce[id_] = bytes([random.getrandbits(4) for i in range(24)])
             context = {"name": "doAuth",
                        "args": {"nonce": self.nonce[id_], "id": id_},
-                       "action": "authenticate"}
+                       "action": "authenticate",
+                       "backend": self.backend}
             await ws.send_str(json.dumps(context)) #or send_bytes ??
         try:
             await self.listener(ws, id_)
@@ -143,13 +146,13 @@ class AiohttpWebsocketInterface(object):
         if id_ == "client":
             await self.shutdown()
         else:
+            self.remove_connection(id_)
             if self.closeOnClientQuit:
                 if debug[-1]:
                     print("client died ...")    
                 if len(self.ws) == 0:
                     await self.broker.put("client exit")
                     await self.shutdown()
-            self.remove_connection(id_)
         if debug[-1]:
             print("--- connection of %s stopped " % user)
 
