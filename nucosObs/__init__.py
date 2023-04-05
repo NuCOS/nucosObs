@@ -1,6 +1,6 @@
 
 import asyncio as aio
-
+from .version import version as __version__
 from concurrent.futures import ThreadPoolExecutor
 pool = ThreadPoolExecutor(4)
 allObs = []

@@ -18,13 +18,15 @@ from nucosObs.observer import broadcast
 
 
 class AiohttpWebsocketInterface(object):
-    def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, authenticator=None, 
+    def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, 
+                    authenticator=None, onCloseCallback=None, heartbeat=None,
                     receive_timeout=None, sslClient=None, sslServer=None,
-                    route="/ws", backend="main"):
+                    route="/ws", backend="default"):
         """
         NOTE: authenticator must have a method: startAuth(msg, wsi)
         """
         self.app = app
+        self.onCloseCallback = onCloseCallback
         self.backend = backend
         self.ws = {}
         self.doAuth = doAuth
@@ -40,6 +42,8 @@ class AiohttpWebsocketInterface(object):
         self.sslServer = sslServer
         self.approved = []
         self.receive_timeout = receive_timeout
+        self.heartbeat = heartbeat
+        self.id_0 = None
         app.router.add_route('GET', route, self.handler)
 
     async def send(self, msg, user):
@@ -51,6 +55,12 @@ class AiohttpWebsocketInterface(object):
                 await self.ws[id_].send_str(msg)
             except:
                 pass
+
+    async def send_by_id(self, msg, id_):
+        """
+        """
+        if id_ in self.ws:
+            await self.ws[id_].send_str(msg)
 
     async def broadcast(self, msg):
         for id_, ws in self.ws.items():
@@ -73,10 +83,11 @@ class AiohttpWebsocketInterface(object):
 
 
     async def handler(self, request):
-        ws = web.WebSocketResponse()
+        ws = web.WebSocketResponse(heartbeat=self.heartbeat)
         await ws.prepare(request)
         id_ =  ws.headers.get("Sec-Websocket-Accept")
         self.ws.update({id_: ws})
+        self.id_0 = id_  # store the first connection for easier reference
         if debug[-1]:
             print("Partner connected")     
             print(self.ws)   
@@ -139,22 +150,34 @@ class AiohttpWebsocketInterface(object):
                         break
                 else:
                     await self.broker.put(data)
+            elif msg.type == aiohttp.WSMsgType.CLOSED:
+                print(f"closed by client {user}")
+                await self.ws[id_].close()
+                break
+            elif msg.type == aiohttp.WSMsgType.ERROR:
+                print(f"error by client {user}")
+                await self.ws[id_].close()
+                break
             else:
+                if debug[-1]:
+                    print(f"an unknown text message arrived {msg.type} by {user}")
                 await self.ws[id_].close()
                 break
         # print("out of order.........")
         if id_ == "client":
             await self.shutdown()
         else:
-            self.remove_connection(id_)
             if self.closeOnClientQuit:
                 if debug[-1]:
                     print("client died ...")    
                 if len(self.ws) == 0:
                     await self.broker.put("client exit")
                     await self.shutdown()
+            self.remove_connection(id_)
         if debug[-1]:
             print("--- connection of %s stopped " % user)
+        if self.onCloseCallback:
+            await self.onCloseCallback(user)
 
     def remove_connection(self, id_):
         self.ws.pop(id_)
@@ -166,3 +189,4 @@ class AiohttpWebsocketInterface(object):
             print("after client left:")
             print("user...",self.connectedUser)
             print("ws.....",self.ws)
+

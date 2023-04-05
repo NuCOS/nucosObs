@@ -1,7 +1,16 @@
-import asyncio as aio
 
+import asyncio as aio
 from nucosObs import loop, allObservables
 
+try:
+    subversion = int(sys.version.split(".")[1])
+except:
+    subversion = 8
+    
+if subversion >= 10
+    py11 = True
+else:
+    py11 = False
 
 class NoConcurrentObserver(Exception):
     def __init__(self, message):
@@ -20,7 +29,11 @@ class Observable():
 
     def register(self, observer, concurrent=[]):
         if not concurrent:
-            self.q.update({observer.name: aio.Queue(loop=self.loop)})
+            if py11:
+                queue = aio.Queue()
+            else:
+                queue = aio.Queue(loop=self.loop)
+            self.q.update({observer.name: queue})
             observer._queue = self.q[observer.name]
         else:
             concurrentQueues = []

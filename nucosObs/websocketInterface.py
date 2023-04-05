@@ -14,7 +14,7 @@ except:
 
 from nucosObs import loop, debug
 from nucosObs.observer import broadcast
-
+# debug.append(True)
 
 class WebsocketInterface(object):
     def __init__(self,

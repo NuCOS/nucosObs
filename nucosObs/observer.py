@@ -59,14 +59,20 @@ class Observer():
         self.callbacks = {}
         self.schedule_time = 1.0
         self.schedule_task = None
-        self.stopTimeFraction = 1
+        self.schedule_args = []
+        self.schedule_kwargs = {}
+        self.stopTimeFraction = 10 # MEANS IN A 10TH FRACTION CAN BES THE LOOP STOPPED
         self.stop = False
+        self.stopScheduleLoop = False
         self._bridge_ = {}
 
-    def scheduleRegular(self, method, t, stopTimeFraction=1):
+    def scheduleRegular(self, method, t, *schedule_args, **schedule_kwargs):
         self.schedule_task = method
+        self.schedule_args = schedule_args
+        self.schedule_kwargs = schedule_kwargs
         self.schedule_time = t
-        self.stopTimeFraction = stopTimeFraction
+        # self.stopTimeFraction = 5
+        self.stopScheduleLoop = False
 
     async def shutdown(self):
         if debug[-1]:
@@ -119,9 +125,17 @@ class Observer():
         else:
             return False, None, None
 
+    def startSchedule(self):
+        # print("START schedule")
+        self.stopScheduleLoop = False
+        loop.create_task(self.scheduleLoop())
+
+    def stopSchedule(self):
+        self.stopScheduleLoop = True
+
     async def scheduleLoop(self):
         self.stop = False
-        while not self.stop:
+        while not self.stop and not self.stopScheduleLoop:
             n = 0
             while n < self.stopTimeFraction:
                 n += 1
@@ -129,7 +143,7 @@ class Observer():
                 if self.stop:
                     break
             if self.schedule_task:
-                await self.schedule_task()
+                await self.schedule_task(*self.schedule_args, **self.schedule_kwargs)
         if debug[-1]:
             print("leave scheduleLoop")
 
@@ -213,3 +227,4 @@ class BroadcastObserver(Observer):
 
 broadcast = Observable()
 broadcastObserver = BroadcastObserver("broadcastObserver", broadcast)
+
