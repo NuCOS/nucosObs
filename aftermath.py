@@ -18,7 +18,7 @@ f.close()
 f = open("".join([raw_fn,"_",py,".xml"]), "w")
 txt = txt.replace("UTest", "".join(["UTest_",py,"_"]))
 f.write(txt)
-f.close
+f.close()
 
 os.remove(filename)
 
