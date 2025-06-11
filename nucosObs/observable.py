@@ -1,3 +1,5 @@
+"""Observable helper used by observers to share events."""
+
 import asyncio as aio
 
 from nucosObs import loop, allObservables

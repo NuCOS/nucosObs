@@ -1,3 +1,5 @@
+"""Basic ``websockets`` based interface for observers."""
+
 import websockets
 import asyncio as aio
 try:
@@ -17,6 +19,8 @@ from nucosObs.observer import broadcast
 
 
 class WebsocketInterface(object):
+    """Simple websocket server/client using the ``websockets`` package."""
+
     def __init__(self,
                  broker,
                  doAuth=False,
@@ -24,9 +28,7 @@ class WebsocketInterface(object):
                  authenticator=None,
                  sslClient=None,
                  sslServer=None):
-        """
-        NOTE: authenticator must have a method: startAuth(msg, wsi)
-        """
+        """Initialize the interface and optionally enable authentication."""
         self.ws = {}
         self.doAuth = doAuth
         self.broker = broker
@@ -41,11 +43,13 @@ class WebsocketInterface(object):
         self.approved = []
 
     async def broadcast(self, msg, client=None):
+        """Broadcast ``msg`` to all clients or to ``client`` if given."""
         for i, antenna in enumerate(self.ws.values()):
             if client is None or i == client:
                 await antenna.send(msg)
 
     async def connect(self, host, port):
+        """Connect as a client to ``host`` and ``port``."""
         if debug[-1]:
             print("try to start client")
         # self.server = await websockets.connect(self.handler, ip, port)
@@ -58,12 +62,14 @@ class WebsocketInterface(object):
         await self.listener(websocket, 'client')
 
     async def serve(self, ip, port):
+        """Start a websocket server bound to ``ip``/``port``."""
         if debug[-1]:
             print("try to start server")
         self.server = await websockets.serve(self.handler, ip, port, ssl=self.sslServer)
         print("started server", self.server)
 
     async def handler(self, websocket, path):
+        """Handle a single websocket connection."""
         host = websocket.host
         if isCR:
             id_ = random(12).decode()
@@ -84,6 +90,7 @@ class WebsocketInterface(object):
         await self.listener(self.ws[id_], id_)
 
     async def shutdown(self):
+        """Close all open connections and inform observers."""
         if debug[-1]:
             print("in shutdown process ...")
         await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
@@ -92,6 +99,7 @@ class WebsocketInterface(object):
                 await self.ws[k].close()
 
     async def listener(self, ws, id_):
+        """Read messages from ``ws`` and route them to the broker."""
         user = "unknown"
         while True:
             if ws is not None:
