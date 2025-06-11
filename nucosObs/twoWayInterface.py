@@ -12,7 +12,8 @@ class TwoWayInterface(object):
     def __init__(self, observables_dict, send_all=False):
         """Create interface with mapping of names to observables."""
         self.loop = loop
-        self.q = aio.Queue(loop=self.loop)
+        # Remove deprecated loop parameter when creating the queue
+        self.q = aio.Queue()
         self.observables_dict = observables_dict
         self.stop = False
         self.send_all = send_all

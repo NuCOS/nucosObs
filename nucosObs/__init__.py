@@ -7,7 +7,10 @@ pool = ThreadPoolExecutor(4)
 allObs = []
 allObservables = []
 
-loop = aio.get_event_loop()
+# Create a default event loop on import so that modules relying on the loop
+# do not trigger a deprecation warning with ``get_event_loop``.
+loop = aio.new_event_loop()
+aio.set_event_loop(loop)
 debug = [False]
 
 

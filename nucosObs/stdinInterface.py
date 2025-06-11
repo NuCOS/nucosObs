@@ -12,14 +12,24 @@ class StdinInterface(object):
     def __init__(self, observable):
         """Create the interface and attach ``observable`` for output."""
         self.loop = loop
-        self.q = aio.Queue(loop=self.loop)
-        self.loop.add_reader(sys.stdin, self.got_input)
+        # `asyncio.Queue` does not take a loop parameter since Python 3.8
+        # and specifying it raises an exception on modern versions.
+        self.q = aio.Queue()
+        try:
+            # In test environments ``stdin`` might not be a real file
+            # object which would raise ``ValueError`` when registering a
+            # reader. Ignore such failures so the interface can still be
+            # constructed.
+            self.loop.add_reader(sys.stdin, self.got_input)
+        except (ValueError, NotImplementedError):
+            pass
         self.observable = observable
         self.stop = False
 
     def got_input(self):
         """Callback for the event loop when input is available."""
-        aio.ensure_future(self.q.put(sys.stdin.readline()), loop=self.loop)
+        # Schedule putting the input into the queue on the running loop
+        self.loop.create_task(self.q.put(sys.stdin.readline()))
 
     async def get_ui(self):
         """Coroutine processing the input queue and dispatching commands."""
