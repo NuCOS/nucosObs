@@ -1,3 +1,4 @@
+"""Helper functions and globals used by ``nucosObs``."""
 
 import asyncio as aio
 
@@ -6,11 +7,15 @@ pool = ThreadPoolExecutor(4)
 allObs = []
 allObservables = []
 
-loop = aio.get_event_loop()
+# Create a default event loop on import so that modules relying on the loop
+# do not trigger a deprecation warning with ``get_event_loop``.
+loop = aio.new_event_loop()
+aio.set_event_loop(loop)
 debug = [False]
 
 
 def get_all_pending_futures(ui=[]):
+    """Return coroutines for all registered observers and schedules."""
     obs = [o.observe for o in allObs]
     schedules = [o.scheduleLoop
                  for o in allObs if o.schedule_task is not None]
@@ -18,6 +23,7 @@ def get_all_pending_futures(ui=[]):
 
 
 def main_loop(ui, test=False):
+    """Run the event loop with all observers and optional UI coroutines."""
     # the workers should be closed first
     obs = [o.observe() for o in allObs]
     if debug[-1]:

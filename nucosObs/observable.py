@@ -1,3 +1,5 @@
+"""Observable helper used by observers to share events."""
+
 import asyncio as aio
 
 from nucosObs import loop, allObservables
@@ -20,7 +22,9 @@ class Observable():
 
     def register(self, observer, concurrent=[]):
         if not concurrent:
-            self.q.update({observer.name: aio.Queue(loop=self.loop)})
+            # In modern Python versions the loop parameter is deprecated
+            # and removed. Create queue bound to the current loop.
+            self.q.update({observer.name: aio.Queue()})
             observer._queue = self.q[observer.name]
         else:
             concurrentQueues = []

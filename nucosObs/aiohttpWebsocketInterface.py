@@ -1,3 +1,5 @@
+"""Websocket interface implementation using ``aiohttp``."""
+
 import asyncio as aio
 from aiohttp import web
 import aiohttp
@@ -18,12 +20,11 @@ from nucosObs.observer import broadcast
 
 
 class AiohttpWebsocketInterface(object):
-    def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, authenticator=None, 
+    """A websocket interface based on ``aiohttp``."""
+    def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, authenticator=None,
                     receive_timeout=None, sslClient=None, sslServer=None,
                     route="/ws", backend="main"):
-        """
-        NOTE: authenticator must have a method: startAuth(msg, wsi)
-        """
+        """Create the interface and register a websocket route."""
         self.app = app
         self.backend = backend
         self.ws = {}
@@ -43,6 +44,7 @@ class AiohttpWebsocketInterface(object):
         app.router.add_route('GET', route, self.handler)
 
     async def send(self, msg, user):
+        """Send ``msg`` to the websocket connection belonging to ``user``."""
         id_ = self.connectedUser.get(user)
         if id_ is None:
             return
@@ -53,6 +55,7 @@ class AiohttpWebsocketInterface(object):
                 pass
 
     async def broadcast(self, msg):
+        """Send ``msg`` to all connected websocket clients."""
         for id_, ws in self.ws.items():
             try:
                 await ws.send_str(msg)
@@ -60,6 +63,7 @@ class AiohttpWebsocketInterface(object):
                 pass
 
     async def connect(self, host, port):
+        """Connect to a remote websocket server."""
         if debug[-1]:
             print("try to start client")
         # self.server = await websockets.connect(self.handler, ip, port)
@@ -73,6 +77,7 @@ class AiohttpWebsocketInterface(object):
 
 
     async def handler(self, request):
+        """Handle incoming websocket upgrade requests."""
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         id_ =  ws.headers.get("Sec-Websocket-Accept")
@@ -101,6 +106,7 @@ class AiohttpWebsocketInterface(object):
         return ws
 
     async def shutdown(self):
+        """Close all websocket connections and notify observers."""
         if debug[-1]:
             print("in shutdown process ...")
         await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
@@ -109,6 +115,7 @@ class AiohttpWebsocketInterface(object):
                 await self.ws[k].close()
 
     async def listener(self, ws, id_):
+        """Listen for messages on ``ws`` and forward them to the broker."""
         user = "unknown"
         while True:
             # async for msg in ws: ---> replaced by ...
@@ -157,6 +164,7 @@ class AiohttpWebsocketInterface(object):
             print("--- connection of %s stopped " % user)
 
     def remove_connection(self, id_):
+        """Remove a connection from the internal registry."""
         self.ws.pop(id_)
         if id_ in self.isAuthenticated:
             user = self.isAuthenticated.pop(id_)
