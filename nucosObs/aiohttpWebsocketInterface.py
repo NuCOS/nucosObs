@@ -1,6 +1,7 @@
 """Websocket interface implementation using ``aiohttp``."""
 
 import asyncio as aio
+import secrets
 from aiohttp import web
 import aiohttp
 try:
@@ -17,6 +18,12 @@ except:
 
 from nucosObs import loop, debug
 from nucosObs.observer import broadcast
+
+
+def _token(length):
+    if isCR:
+        return random(length).decode()
+    return secrets.token_urlsafe(length)
 
 
 class AiohttpWebsocketInterface(object):
@@ -121,10 +128,7 @@ class AiohttpWebsocketInterface(object):
             print("Partner connected")     
             print(self.ws)   
         if self.doAuth:
-            if isCR:
-                self.nonce[id_] = random(24).decode()
-            else:
-                self.nonce[id_] = bytes([random.getrandbits(4) for i in range(24)])
+            self.nonce[id_] = _token(24)
             context = {"name": "doAuth",
                        "args": {"nonce": self.nonce[id_], "id": id_},
                        "action": "authenticate",
@@ -135,8 +139,8 @@ class AiohttpWebsocketInterface(object):
         except aio.TimeoutError:
             if debug[-1]:
                 print("timeout....")
-            await ws.close()
             self.remove_connection(id_)
+            await ws.close()
         # NOTE next line is mandatory for preventing a closed websocket to raise exception
         return ws
 
@@ -155,10 +159,15 @@ class AiohttpWebsocketInterface(object):
         protects the hard shutdown if the same user is connected once again
         """
         if self.closeSanely:
-            await self.closeSanely(user, id_old)
+            try:
+                await self.closeSanely(user, id_old)
+            except Exception as error:
+                if debug[-1]:
+                    print("closeSanely callback failed:", error)
             await aio.sleep(3.0)
         if id_old in self.ws:
             await self.ws[id_old].close()
+        self.remove_connection(id_old)
 
     async def listener(self, ws, id_):
         """Listen for messages on ``ws`` and forward them to the broker."""
@@ -217,7 +226,11 @@ class AiohttpWebsocketInterface(object):
                     await self.broker.put("client exit")
                     await self.shutdown()
                     if self.onCloseCallback:
-                        await self.onCloseCallback(user)
+                        try:
+                            await self.onCloseCallback(user)
+                        except Exception as error:
+                            if debug[-1]:
+                                print("close callback failed:", error)
         if debug[-1]:
             print("--- connection of %s stopped " % user)
         #if self.onCloseCallback:
@@ -225,12 +238,12 @@ class AiohttpWebsocketInterface(object):
 
     def remove_connection(self, id_):
         """Remove a connection from the internal registry."""
-        self.ws.pop(id_)
+        self.ws.pop(id_, None)
         if id_ in self.ids:
             self.ids.remove(id_)
         if id_ in self.isAuthenticated:
             user = self.isAuthenticated.pop(id_)
-            if user in self.connectedUser:
+            if self.connectedUser.get(user) == id_:
                 self.connectedUser.pop(user)
         if debug[-1]:
             print("after client left:")
