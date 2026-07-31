@@ -39,6 +39,8 @@
 	runtimes, websocket authentication, and supported test workflows in README.
 - Added open-source repository health documentation, GitHub issue and pull
 	request templates, dependency updates, and source distribution metadata.
+- Added a coverage-grounded final readiness screen with non-breaking proposals
+	for logic coverage and developer usability.
 
 ### Removed
 

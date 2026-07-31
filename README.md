@@ -121,6 +121,9 @@ then run the test suite with `python -m pytest`.
 
 The repository runs this command in GitHub Actions on Python 3.11 through 3.13.
 
+For a coverage-grounded view of current readiness and compatible next steps,
+see [docs/FINAL_READINESS.md](docs/FINAL_READINESS.md).
+
 ## Contributing and Support
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and
