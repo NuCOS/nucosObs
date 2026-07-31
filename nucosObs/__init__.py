@@ -14,6 +14,43 @@ class Runtime:
         self.allObs = []
         self.allObservables = []
         self.debug = [False]
+        self._tasks = set()
+        self._shutdown = False
+
+    def create_task(self, coroutine):
+        """Create and track work owned by this runtime."""
+        task = self.loop.create_task(coroutine)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
+
+    async def shutdown(self):
+        """Request observer shutdown and return a structured state report."""
+        open_observers = [observer for observer in self.allObs if not observer.stop]
+        pending_tasks = [task for task in self._tasks if not task.done()]
+        report = {
+            "already_shutdown": self._shutdown,
+            "observers": {
+                "total": len(self.allObs),
+                "open": len(open_observers),
+            },
+            "tasks": {"pending": len(pending_tasks), "cancelled": 0},
+        }
+        if self._shutdown:
+            return report
+
+        self._shutdown = True
+        for observer in self.allObs:
+            observer.stop = True
+            observer.stopSchedule()
+        for observable in self.allObservables:
+            await observable.put({"action": "stop_observer"})
+        for task in pending_tasks:
+            task.cancel()
+        if pending_tasks:
+            await aio.gather(*pending_tasks, return_exceptions=True)
+        report["tasks"]["cancelled"] = len(pending_tasks)
+        return report
 
     def main_loop(self, ui, test=False):
         """Run this runtime's observers and optional UI coroutines."""

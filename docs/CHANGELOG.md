@@ -47,6 +47,8 @@
 	and report stop state consistently.
 - Added optional `on_error` hooks to observers and websocket interfaces for
 	handler, parser, send, broadcast, authentication, and close-callback errors.
+- Added `Runtime.shutdown()` for explicit observer shutdown, runtime-owned task
+	cancellation, and an inspectable structured state report.
 
 ### Removed
 
@@ -72,3 +74,5 @@
   targeted two-way routing, broadcast routing, waits, and stop behavior.
 - Added error-reporting regressions for failed handlers, failed aiohttp sends,
   and rejected websocket authentication.
+- Added shutdown-report regressions for clean, repeated, and scheduled-work
+	cancellation paths.

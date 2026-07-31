@@ -142,7 +142,10 @@ class Observer():
     def startSchedule(self):
         # print("START schedule")
         self.stopScheduleLoop = False
-        self.loop.create_task(self.scheduleLoop())
+        if hasattr(self.runtime, "create_task"):
+            self.runtime.create_task(self.scheduleLoop())
+        else:
+            self.loop.create_task(self.scheduleLoop())
 
     def stopSchedule(self):
         self.stopScheduleLoop = True
