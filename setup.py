@@ -39,6 +39,10 @@ setup(name=NAME,
           packages=find_packages(include=["nucosObs", "nucosObs.*"]),
           install_requires=['websockets>=15,<16', 'aiohttp>=3.12,<4'],
           extras_require={
-                  "test": ["pytest>=9,<10", "pytest-asyncio>=1,<2"],
+                  "test": [
+                      "pytest>=9,<10",
+                      "pytest-asyncio>=1,<2",
+                      "pytest-cov>=7,<8",
+                  ],
           },
       )

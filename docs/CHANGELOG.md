@@ -51,6 +51,8 @@
 	cancellation, and an inspectable structured state report.
 - Added `python -m nucosObs` diagnostics with stable human-readable and JSON
 	output for installed versions and default runtime state.
+- Declared `pytest-cov` in the test extra and configured CI coverage XML
+	publishing with focused core-module coverage floors.
 
 ### Removed
 
@@ -79,3 +81,5 @@
 - Added shutdown-report regressions for clean, repeated, and scheduled-work
 	cancellation paths.
 - Added subprocess coverage for human-readable and JSON diagnostics output.
+- Raised measured overall coverage to 79% with 95% coverage for both directive
+	interface modules.

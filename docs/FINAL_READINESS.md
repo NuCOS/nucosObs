@@ -2,7 +2,7 @@
 
 **Assessment date**: July 31, 2026
 **Runtime support**: Python 3.11 through 3.13
-**Verification**: 30 pytest tests pass; the package builds as both a wheel and
+**Verification**: 40 pytest tests pass; the package builds as both a wheel and
 source distribution.
 
 ## Current Signal
@@ -12,8 +12,8 @@ source distribution.
 | Core observable routing | Ready | 100% coverage for `observable.py` |
 | Observer and runtime lifecycle | Ready with follow-up opportunities | 76-85% coverage, including thread, ordering, and isolation regressions |
 | Websocket interfaces | Ready for covered flows | 75-77% coverage with loopback auth and cleanup tests |
-| Stdin and two-way interfaces | Needs focused coverage | 45% and 33% coverage respectively |
-| Developer workflow | Ready | Python 3.11-3.13 CI, JUnit output, wheel builds, templates, and policy files |
+| Stdin and two-way interfaces | Ready | 95% coverage each, including routing and shutdown commands |
+| Developer workflow | Ready | Python 3.11-3.13 CI, JUnit and coverage XML, wheel builds, templates, and policy files |
 
 The project is suitable for public GitHub use. The highest-value next work is
 not a public API rewrite; it is making behavior easier to observe, test, and
@@ -131,3 +131,11 @@ touched core module.
 
 This order raises confidence in existing behavior before adding developer-facing
 features. Every item is additive or preserves the existing default behavior.
+
+## Completed Improvements
+
+The directive, error-visibility, runtime-shutdown, diagnostics, and coverage
+guardrail proposals are now implemented. CI publishes `coverage.xml` and
+enforces focused coverage floors for observable routing and directive modules,
+plus a 75% overall core-package floor. Example execution and opt-in typing
+remain suitable future additions.
