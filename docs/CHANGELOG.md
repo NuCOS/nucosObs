@@ -45,6 +45,8 @@
 	stdin remains the default for existing callers.
 - Made `TwoWayInterface` preserve caller directives, parse full delay values,
 	and report stop state consistently.
+- Added optional `on_error` hooks to observers and websocket interfaces for
+	handler, parser, send, broadcast, authentication, and close-callback errors.
 
 ### Removed
 
@@ -68,3 +70,5 @@
 - Built the distribution wheel successfully with the configured build backend.
 - Added focused async tests for stdin commands, multi-digit leave delays,
   targeted two-way routing, broadcast routing, waits, and stop behavior.
+- Added error-reporting regressions for failed handlers, failed aiohttp sends,
+  and rejected websocket authentication.

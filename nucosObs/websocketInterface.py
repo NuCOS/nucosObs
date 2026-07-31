@@ -2,6 +2,7 @@
 
 import websockets
 import asyncio as aio
+import inspect
 import secrets
 try:
     import simplejson as json
@@ -35,7 +36,8 @@ class WebsocketInterface(object):
                  closeOnClientQuit=False,
                  authenticator=None,
                  sslClient=None,
-                 sslServer=None):
+                 sslServer=None,
+                 on_error=None):
         """Initialize the interface and optionally enable authentication."""
         self.ws = {}
         self.doAuth = doAuth
@@ -49,12 +51,22 @@ class WebsocketInterface(object):
         self.sslClient = sslClient
         self.sslServer = sslServer
         self.approved = []
+        self.on_error = on_error
+
+    async def _report_error(self, context, error):
+        if self.on_error is not None:
+            result = self.on_error(context, error)
+            if inspect.isawaitable(result):
+                await result
 
     async def broadcast(self, msg, client=None):
         """Broadcast ``msg`` to all clients or to ``client`` if given."""
         for i, antenna in enumerate(self.ws.values()):
             if client is None or i == client:
-                await antenna.send(msg)
+                try:
+                    await antenna.send(msg)
+                except Exception as error:
+                    await self._report_error("broadcast", error)
 
     async def connect(self, host, port):
         """Connect as a client to ``host`` and ``port``."""
@@ -129,6 +141,9 @@ class WebsocketInterface(object):
                 if id_out is not None and id_out == id_:
                     self.isAuthenticated.update({id_: user})
                 else:
+                    await self._report_error(
+                        "authentication", PermissionError("authentication rejected")
+                    )
                     self.remove_connection(id_)
                     await ws.close()
                     break

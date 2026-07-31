@@ -1,6 +1,7 @@
 """Websocket interface implementation using ``aiohttp``."""
 
 import asyncio as aio
+import inspect
 import secrets
 from aiohttp import web
 import aiohttp
@@ -32,7 +33,7 @@ class AiohttpWebsocketInterface(object):
                     authenticator=None,onCloseCallback=None, heartbeat=None,
                     closeSanely=None,
                     receive_timeout=None, sslClient=None, sslServer=None,
-                    route="/ws", backend="default"):
+                    route="/ws", backend="default", on_error=None):
         """Create the interface and register a websocket route."""
         self.app = app
         self.onCloseCallback = onCloseCallback
@@ -56,7 +57,14 @@ class AiohttpWebsocketInterface(object):
         self.heartbeat = heartbeat
         self.ids = []
         self.id_0 = None
+        self.on_error = on_error
         app.router.add_route('GET', route, self.handler)
+
+    async def _report_error(self, context, error):
+        if self.on_error is not None:
+            result = self.on_error(context, error)
+            if inspect.isawaitable(result):
+                await result
 
     async def send(self, msg, user):
         """Send ``msg`` to the websocket connection belonging to ``user``."""
@@ -66,8 +74,8 @@ class AiohttpWebsocketInterface(object):
         else:
             try:
                 await self.ws[id_].send_str(msg)
-            except:
-                pass
+            except Exception as error:
+                await self._report_error("send", error)
 
     async def send_by_id(self, msg, id_):
         """
@@ -93,8 +101,8 @@ class AiohttpWebsocketInterface(object):
         for id_, ws in self.ws.items():
             try:
                 await ws.send_str(msg)
-            except:
-                pass
+            except Exception as error:
+                await self._report_error("broadcast", error)
 
     async def connect(self, host, port):
         """Connect to a remote websocket server."""
@@ -162,6 +170,7 @@ class AiohttpWebsocketInterface(object):
             try:
                 await self.closeSanely(user, id_old)
             except Exception as error:
+                await self._report_error("close_sanely", error)
                 if debug[-1]:
                     print("closeSanely callback failed:", error)
             await aio.sleep(3.0)
@@ -197,6 +206,9 @@ class AiohttpWebsocketInterface(object):
                             self.connectedUser.update({user: id_})
                         # print(self.connectedUser, self.ws)
                     else:
+                        await self._report_error(
+                            "authentication", PermissionError("authentication rejected")
+                        )
                         await self.ws[id_].close()
                         break
                 else:
@@ -229,6 +241,7 @@ class AiohttpWebsocketInterface(object):
                         try:
                             await self.onCloseCallback(user)
                         except Exception as error:
+                            await self._report_error("on_close", error)
                             if debug[-1]:
                                 print("close callback failed:", error)
         if debug[-1]:

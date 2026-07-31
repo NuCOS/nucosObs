@@ -69,8 +69,12 @@ async def test_authenticated_client_routes_messages_and_is_removed_on_close(monk
 @pytest.mark.asyncio
 async def test_rejected_client_is_closed_and_all_state_is_removed(monkeypatch):
     monkeypatch.setattr(websocketInterface, "isCR", False)
+    errors = []
     interface = WebsocketInterface(
-        asyncio.Queue(), doAuth=True, authenticator=RejectAuthenticator()
+        asyncio.Queue(),
+        doAuth=True,
+        authenticator=RejectAuthenticator(),
+        on_error=lambda context, error: errors.append((context, error)),
     )
     await interface.serve("127.0.0.1", 0)
     port = interface.server.sockets[0].getsockname()[1]
@@ -91,6 +95,9 @@ async def test_rejected_client_is_closed_and_all_state_is_removed(monkeypatch):
         assert interface.ws == {}
         assert interface.isAuthenticated == {}
         assert interface.nonce == {}
+        assert [(context, type(error), str(error)) for context, error in errors] == [
+            ("authentication", PermissionError, "authentication rejected")
+        ]
     finally:
         interface.server.close()
         await interface.server.wait_closed()

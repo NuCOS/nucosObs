@@ -1,6 +1,7 @@
 """Base classes and helpers for creating observers."""
 
 import asyncio as aio
+import inspect
 
 import nucosObs
 from nucosObs.observable import Observable
@@ -44,7 +45,7 @@ class Observer():
 
     """
 
-    def __init__(self, name, observable, concurrent=[], runtime=None):
+    def __init__(self, name, observable, concurrent=[], runtime=None, on_error=None):
         """
         :param name: the name of the observer
         :type name: str
@@ -70,6 +71,13 @@ class Observer():
         self.stop = False
         self.stopScheduleLoop = False
         self._bridge_ = {}
+        self.on_error = on_error
+
+    async def _report_error(self, context, error):
+        if self.on_error is not None:
+            result = self.on_error(context, error)
+            if inspect.isawaitable(result):
+                await result
 
     def scheduleRegular(self, method, t, *schedule_args, **schedule_kwargs):
         self.schedule_task = method
@@ -168,24 +176,28 @@ class Observer():
                       (self.name, item, type(item)))
             try:
                 isCallable, method, args = self.parse(item)
-            except:
-                # NOTE for self created parse function and failures therein
+            except Exception as error:
+                await self._report_error("parse", error)
                 if self.runtime.debug[-1]:
                     print("parse failed: %s" % item)
                 isCallable = False
             if isCallable:
-                if hasattr(method, "inThread"):
-                    await aio.get_running_loop().run_in_executor(
-                        self.runtime.pool, method, *args
-                    )
-                else:
-                    await method(*args)
-                if hasattr(method, "callback") and method.callback:
-                    if method in self.callbacks:
-                        await self.callbacks[method]()
+                try:
+                    if hasattr(method, "inThread"):
+                        await aio.get_running_loop().run_in_executor(
+                            self.runtime.pool, method, *args
+                        )
                     else:
-                        raise NoCallbackException(
-                            "No callback known of method %s" % method)
+                        await method(*args)
+                    if hasattr(method, "callback") and method.callback:
+                        if method in self.callbacks:
+                            await self.callbacks[method]()
+                        else:
+                            raise NoCallbackException(
+                                "No callback known of method %s" % method)
+                except Exception as error:
+                    await self._report_error("handler", error)
+                    raise
             elif isinstance(item, dict) and "action" in item:
                 if self.runtime.debug[-1]:
                     print("....", item)
@@ -219,8 +231,8 @@ class Observer():
 
 
 class BroadcastObserver(Observer):
-    def __init__(self, name, observable, concurrent=[], runtime=None):
-        super(BroadcastObserver, self).__init__(name, observable, concurrent, runtime)
+    def __init__(self, name, observable, concurrent=[], runtime=None, on_error=None):
+        super(BroadcastObserver, self).__init__(name, observable, concurrent, runtime, on_error)
         self.obs = self.runtime.allObservables
 
     async def broadcast(self, msg):
