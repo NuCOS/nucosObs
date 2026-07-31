@@ -25,10 +25,11 @@ class Observable():
     The events are produced in tasks which are then put into the async loop from the beginning on.
 
     """
-    def __init__(self):
-        self.loop = nucosObs.loop
+    def __init__(self, runtime=None):
+        self.runtime = runtime or nucosObs
+        self.loop = self.runtime.loop
         self.q = {}
-        allObservables.append(self)
+        self.runtime.allObservables.append(self)
 
     def register(self, observer, concurrent=[]):
         if not concurrent:

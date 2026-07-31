@@ -22,6 +22,9 @@
 - Made pytest the primary test runner and added development test dependencies.
 - Declared Python 3.8+ and `websockets>=15` support consistently in packaging,
 	requirements, README, and the helper script.
+- Added `Runtime` for applications that need isolated event loops, observer
+	registries, observable registries, debug state, and thread pools in one
+	process.
 
 ### Tests
 
@@ -31,3 +34,5 @@
 	final-client cleanup with the fallback token path forced.
 - Added aiohttp loopback coverage for accepted and rejected authentication,
 	connection replacement, receive timeouts, and failing close callbacks.
+- Added a runtime-isolation test that runs two applications through separate
+	`Runtime.main_loop()` instances.

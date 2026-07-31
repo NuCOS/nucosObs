@@ -3,7 +3,6 @@
 import asyncio as aio
 
 import nucosObs
-from nucosObs import allObs, pool, debug, allObservables
 from nucosObs.observable import Observable
 
 
@@ -45,7 +44,7 @@ class Observer():
 
     """
 
-    def __init__(self, name, observable, concurrent=[]):
+    def __init__(self, name, observable, concurrent=[], runtime=None):
         """
         :param name: the name of the observer
         :type name: str
@@ -54,10 +53,13 @@ class Observer():
         :param concurrent: all other concurrent observers (or just one of them, they share all on _queue)
         :type concurrent: list
         """
+        self.runtime = runtime or observable.runtime
+        if observable.runtime is not self.runtime:
+            raise ValueError("observer and observable must share a runtime")
         self.name = name
         self._queue = None
-        self.loop = nucosObs.loop
-        allObs.append(self)
+        self.loop = self.runtime.loop
+        self.runtime.allObs.append(self)
         observable.register(self, concurrent)
         self.callbacks = {}
         self.schedule_time = 1.0
@@ -78,10 +80,11 @@ class Observer():
         self.stopScheduleLoop = False
 
     async def shutdown(self):
-        if debug[-1]:
+        if self.runtime.debug[-1]:
             print("shutdown now...")
         self.stop = True
-        await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
+        for observable in self.runtime.allObservables:
+            await observable.put({"action": "stop_observer"})
 
     async def scheduleOnce(self, method, t, *args, **kwargs):
         await aio.sleep(t)
@@ -147,7 +150,7 @@ class Observer():
                     break
             if self.schedule_task:
                 await self.schedule_task(*self.schedule_args, **self.schedule_kwargs)
-        if debug[-1]:
+        if self.runtime.debug[-1]:
             print("leave scheduleLoop")
 
     async def observe(self):
@@ -160,19 +163,21 @@ class Observer():
             if self._queue is None:
                 break
             item = await self._queue.get()
-            if debug[-1]:
+            if self.runtime.debug[-1]:
                 print("observer %s received %s, type %s" %
                       (self.name, item, type(item)))
             try:
                 isCallable, method, args = self.parse(item)
             except:
                 # NOTE for self created parse function and failures therein
-                if debug[-1]:
+                if self.runtime.debug[-1]:
                     print("parse failed: %s" % item)
                 isCallable = False
             if isCallable:
                 if hasattr(method, "inThread"):
-                    await aio.get_running_loop().run_in_executor(pool, method, *args)
+                    await aio.get_running_loop().run_in_executor(
+                        self.runtime.pool, method, *args
+                    )
                 else:
                     await method(*args)
                 if hasattr(method, "callback") and method.callback:
@@ -182,7 +187,7 @@ class Observer():
                         raise NoCallbackException(
                             "No callback known of method %s" % method)
             elif isinstance(item, dict) and "action" in item:
-                if debug[-1]:
+                if self.runtime.debug[-1]:
                     print("....", item)
                 if item["action"] == "stop_observer":
                     self.stop = True
@@ -192,9 +197,9 @@ class Observer():
                 self.stop = True
                 break
             else:
-                if debug[-1]:
+                if self.runtime.debug[-1]:
                     print("swallowed: %s %s" % (self.name, item))
-        if debug[-1]:
+        if self.runtime.debug[-1]:
             print("--- Observer: %s stopped %s" % (self.name, self.stop))
 
     def set_bridge_method(self, method_name, method_hook):
@@ -205,7 +210,7 @@ class Observer():
         self._bridge_.update({method_name: method_hook})
 
     async def bridge(self, method, *args):
-        if debug[-1]:
+        if self.runtime.debug[-1]:
             print("bridge call %s" % method)
         if method not in self._bridge_:
             return
@@ -214,15 +219,15 @@ class Observer():
 
 
 class BroadcastObserver(Observer):
-    def __init__(self, name, observable, concurrent=[]):
-        super(BroadcastObserver, self).__init__(name, observable, concurrent)
-        self.obs = allObservables
+    def __init__(self, name, observable, concurrent=[], runtime=None):
+        super(BroadcastObserver, self).__init__(name, observable, concurrent, runtime)
+        self.obs = self.runtime.allObservables
 
     async def broadcast(self, msg):
-        if debug[-1]:
+        if self.runtime.debug[-1]:
             print("broadcast ...", msg, type(msg))
         if "action" in msg:
-            if debug[-1] and msg["action"] == "stop_observer":
+            if self.runtime.debug[-1] and msg["action"] == "stop_observer":
                 print("shut down all observers ...")
         for o in self.obs:
             await o.put(msg)
