@@ -14,6 +14,8 @@
 	`main_loop()`.
 - Generated JSON-safe fallback websocket identifiers and nonces when `nucosCR`
 	is unavailable.
+- Released standard websocket nonce and authentication state when authentication
+	is rejected or a client disconnects.
 - Made aiohttp websocket removal idempotent, clean timeout state before the
 	close handshake, and preserve cleanup when optional callbacks fail.
 
@@ -37,6 +39,8 @@
 	integration coverage for repaired behavior.
 - Added loopback coverage for websocket authentication, routed messages, and
 	final-client cleanup with the fallback token path forced.
+- Added standard websocket authentication-rejection coverage, including normal
+	close handling and complete server-state cleanup.
 - Added aiohttp loopback coverage for accepted and rejected authentication,
 	connection replacement, receive timeouts, and failing close callbacks.
 - Added regression coverage that a failing `closeSanely` callback still removes

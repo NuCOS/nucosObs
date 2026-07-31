@@ -99,6 +99,12 @@ class WebsocketInterface(object):
             for k in [x for x in self.ws.keys()]:
                 await self.ws[k].close()
 
+    def remove_connection(self, id_):
+        """Remove all state associated with a websocket connection."""
+        self.ws.pop(id_, None)
+        self.nonce.pop(id_, None)
+        self.isAuthenticated.pop(id_, None)
+
     async def listener(self, ws, id_):
         """Read messages from ``ws`` and route them to the broker."""
         user = "unknown"
@@ -109,14 +115,13 @@ class WebsocketInterface(object):
                 if id_ == "client":
                     await self.shutdown()
                 else:
-                    self.ws.pop(id_, None)
+                    self.remove_connection(id_)
                     if self.closeOnClientQuit:
                         if debug[-1]:
                             print("client died ...")
                         if len(self.ws) == 0:
                             await self.broker.put("client exit")
                             await self.shutdown()
-                    self.isAuthenticated.pop(id_, None)
                 break
 
             if id_ not in self.isAuthenticated and self.doAuth:
@@ -124,7 +129,7 @@ class WebsocketInterface(object):
                 if id_out is not None and id_out == id_:
                     self.isAuthenticated.update({id_: user})
                 else:
-                    self.ws.pop(id_, None)
+                    self.remove_connection(id_)
                     await ws.close()
                     break
             else:
