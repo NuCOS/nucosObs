@@ -37,6 +37,8 @@
 	output and wheel-build validation.
 - Documented event payloads, sequential delivery, threaded handlers, isolated
 	runtimes, websocket authentication, and supported test workflows in README.
+- Added open-source repository health documentation, GitHub issue and pull
+	request templates, dependency updates, and source distribution metadata.
 
 ### Removed
 
