@@ -217,3 +217,28 @@ async def test_close_callback_failure_does_not_undo_cleanup():
 
     assert interface.ws == {}
     assert interface.ids == []
+
+
+@pytest.mark.asyncio
+async def test_close_sanely_failure_still_removes_replaced_connection(monkeypatch):
+    async def failing_close_sanely(user, connection_id):
+        raise RuntimeError("closeSanely failure")
+
+    async def no_sleep(delay):
+        return None
+
+    monkeypatch.setattr(aiohttpWebsocketInterface.aio, "sleep", no_sleep)
+    interface = AiohttpWebsocketInterface(
+        web.Application(),
+        asyncio.Queue(),
+        closeSanely=failing_close_sanely,
+    )
+    websocket = ClosedWebSocket()
+    interface.ws["old"] = websocket
+    interface.ids.append("old")
+
+    await interface._closeSanely_("old", "user")
+
+    assert websocket.closed
+    assert interface.ws == {}
+    assert interface.ids == []

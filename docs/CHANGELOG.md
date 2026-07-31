@@ -39,6 +39,8 @@
 	final-client cleanup with the fallback token path forced.
 - Added aiohttp loopback coverage for accepted and rejected authentication,
 	connection replacement, receive timeouts, and failing close callbacks.
+- Added regression coverage that a failing `closeSanely` callback still removes
+	the replaced aiohttp connection.
 - Added a runtime-isolation test that runs two applications through separate
 	`Runtime.main_loop()` instances.
 - Built the distribution wheel successfully with the configured build backend.
