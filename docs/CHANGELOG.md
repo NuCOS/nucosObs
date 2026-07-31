@@ -12,6 +12,8 @@
 	client-session shutdown.
 - Corrected runtime loop binding across observers, observables, interfaces, and
 	`main_loop()`.
+- Generated JSON-safe fallback websocket identifiers and nonces when `nucosCR`
+	is unavailable.
 
 ### Changed
 
@@ -23,3 +25,5 @@
 
 - Expanded pytest coverage from 13 to 22 tests with regression and loopback
 	integration coverage for repaired behavior.
+- Added loopback coverage for websocket authentication, routed messages, and
+	final-client cleanup with the fallback token path forced.

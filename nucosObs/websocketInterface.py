@@ -2,6 +2,7 @@
 
 import websockets
 import asyncio as aio
+import secrets
 try:
     import simplejson as json
 except:
@@ -17,6 +18,13 @@ except:
 from nucosObs import loop, debug
 from nucosObs.observer import broadcast
 # debug.append(True)
+
+
+def _token(length):
+    if isCR:
+        return random(length).decode()
+    return secrets.token_urlsafe(length)
+
 
 class WebsocketInterface(object):
     """Simple websocket server/client using the ``websockets`` package."""
@@ -70,18 +78,12 @@ class WebsocketInterface(object):
 
     async def handler(self, websocket):
         """Handle a single websocket connection."""
-        if isCR:
-            id_ = random(12).decode()
-        else:
-            id_ = bytes([random.getrandbits(4) for i in range(12)]).decode()
+        id_ = _token(12)
         self.ws[id_] = websocket
         if debug[-1]:
             print("Partner connected")        
         if self.doAuth:
-            if isCR:
-                self.nonce[id_] = random(24).decode()
-            else:
-                self.nonce[id_] = bytes([random.getrandbits(4) for i in range(24)])
+            self.nonce[id_] = _token(24)
             context = {"name": "doAuth",
                        "args": {"nonce": self.nonce[id_], "id": id_},
                        "action": "authenticate"}
