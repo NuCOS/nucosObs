@@ -1,3 +1,5 @@
+"""Base classes and helpers for creating observers."""
+
 import asyncio as aio
 
 from nucosObs import loop, allObs, pool, debug, allObservables

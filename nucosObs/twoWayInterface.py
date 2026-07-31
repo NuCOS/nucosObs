@@ -1,3 +1,5 @@
+"""Interface sending and receiving directives between observables."""
+
 import sys
 import asyncio as aio
 
@@ -5,17 +7,23 @@ from nucosObs import loop, debug
 from nucosObs.observer import broadcast
 
 class TwoWayInterface(object):
+    """Interface that forwards messages between multiple observables."""
+
     def __init__(self, observables_dict, send_all=False):
+        """Create interface with mapping of names to observables."""
         self.loop = loop
-        self.q = aio.Queue(loop=self.loop)
+        # Remove deprecated loop parameter when creating the queue
+        self.q = aio.Queue()
         self.observables_dict = observables_dict
         self.stop = False
         self.send_all = send_all
 
     async def put(self, txt):
+        """Put a new directive into the internal queue."""
         await self.q.put(txt)
 
     async def get_ui(self):
+        """Process directives from :func:`put` until a stop command arrives."""
         self.stop = False
         while not self.stop:
             directive = await self.q.get()

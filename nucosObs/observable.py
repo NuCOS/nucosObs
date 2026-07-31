@@ -1,3 +1,4 @@
+"""Observable helper used by observers to share events."""
 
 import asyncio as aio
 import sys
@@ -30,6 +31,8 @@ class Observable():
 
     def register(self, observer, concurrent=[]):
         if not concurrent:
+            # In modern Python versions the loop parameter is deprecated
+            # and removed. Create queue bound to the current loop.
             if py11:
                 queue = aio.Queue()
             else:

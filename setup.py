@@ -84,5 +84,5 @@ setup(name=name,
       package_dir=package_dir,
       package_data=package_data,
       scripts=scripts,
-      install_requires=['websockets']
+      install_requires=['websockets', 'aiohttp']
       )
