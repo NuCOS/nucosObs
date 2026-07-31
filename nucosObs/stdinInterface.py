@@ -10,27 +10,21 @@ from nucosObs.observer import broadcast
 class StdinInterface(object):
     """Interface reading commands from ``stdin``."""
 
-    def __init__(self, observable):
+    def __init__(self, observable, input_stream=None, loop=None):
         """Create the interface and attach ``observable`` for output."""
-        self.loop = nucosObs.loop
-        # `asyncio.Queue` does not take a loop parameter since Python 3.8
-        # and specifying it raises an exception on modern versions.
+        self.observable = observable
+        self.input_stream = input_stream or sys.stdin
+        self.loop = loop or getattr(observable, "loop", nucosObs.loop)
         self.q = aio.Queue()
         try:
-            # In test environments ``stdin`` might not be a real file
-            # object which would raise ``ValueError`` when registering a
-            # reader. Ignore such failures so the interface can still be
-            # constructed.
-            self.loop.add_reader(sys.stdin, self.got_input)
-        except (ValueError, NotImplementedError):
+            self.loop.add_reader(self.input_stream, self.got_input)
+        except (OSError, ValueError, NotImplementedError):
             pass
-        self.observable = observable
         self.stop = False
 
     def got_input(self):
         """Callback for the event loop when input is available."""
-        # Schedule putting the input into the queue on the running loop
-        self.loop.create_task(self.q.put(sys.stdin.readline()))
+        self.loop.create_task(self.q.put(self.input_stream.readline()))
 
     async def get_ui(self):
         """Coroutine processing the input queue and dispatching commands."""
@@ -38,14 +32,13 @@ class StdinInterface(object):
         while not self.stop:
             out = (await self.q.get()).strip()
             if "leave_in" in out:
-                # wait async and leave
-                print(out)
                 self.stop = True
-                t = float(out[-1])
+                t = float(out.split()[-1])
                 await aio.sleep(t)
                 await self.observable.put({"name": "shutdown", "args": []})
                 break
             elif out.endswith('x'):
+                self.stop = True
                 await self.observable.put({"name": "shutdown", "args": []})
                 break
             elif out.endswith('say'):

@@ -41,6 +41,10 @@
 	request templates, dependency updates, and source distribution metadata.
 - Added a coverage-grounded final readiness screen with non-breaking proposals
 	for logic coverage and developer usability.
+- Made `StdinInterface` testable with optional input-stream and loop injection;
+	stdin remains the default for existing callers.
+- Made `TwoWayInterface` preserve caller directives, parse full delay values,
+	and report stop state consistently.
 
 ### Removed
 
@@ -62,3 +66,5 @@
 - Added a runtime-isolation test that runs two applications through separate
 	`Runtime.main_loop()` instances.
 - Built the distribution wheel successfully with the configured build backend.
+- Added focused async tests for stdin commands, multi-digit leave delays,
+  targeted two-way routing, broadcast routing, waits, and stop behavior.

@@ -1,6 +1,5 @@
 """Interface sending and receiving directives between observables."""
 
-import sys
 import asyncio as aio
 
 import nucosObs
@@ -27,23 +26,22 @@ class TwoWayInterface(object):
         """Process directives from :func:`put` until a stop command arrives."""
         self.stop = False
         while not self.stop:
-            directive = await self.q.get()
+            directive = dict(await self.q.get())
             if debug[-1]:
                 print("interface received", directive)
             if "action" in directive:
                 action = directive["action"]
                 if "waitTime" in action:
-                    # just wait
-                    t = float(action[-1])
+                    t = float(action.split()[-1])
                     await aio.sleep(t)
                     continue
                 if action.endswith('stop interface'):
-                    # broadcast here the stop event
+                    self.stop = True
                     await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
                     break
                 if "leave_in" in action:
-                    # wait async and leave
-                    t = float(action[-1])
+                    self.stop = True
+                    t = float(action.split()[-1])
                     await aio.sleep(t)
                     break
             if "obs" in directive:
@@ -51,9 +49,8 @@ class TwoWayInterface(object):
                 if nameObs in self.observables_dict:
                     await self.observables_dict[nameObs].put(directive)
             elif self.send_all:
-                for k,v in self.observables_dict.items():
-                    print("send to ",k)
-                    await v.put(directive)
+                for observable in self.observables_dict.values():
+                    await observable.put(dict(directive))
 
 
         if debug[-1]:
