@@ -44,7 +44,7 @@ See the ``examples`` directory for more advanced usage.
 MIT License
 
 ## Platforms
-No specific platform dependency. Python 3.8 or later is required.
+No specific platform dependency. Python 3.9 or later is required.
 
 ## Testing
 Install development dependencies with `pip install -r requirements-dev.txt`,

@@ -25,6 +25,11 @@
 - Added `Runtime` for applications that need isolated event loops, observer
 	registries, observable registries, debug state, and thread pools in one
 	process.
+- Modernized package metadata with `pyproject.toml`, build-system metadata,
+	Markdown project descriptions, dependency bounds, and test extras.
+- Declared Python 3.9+ support to match the supported aiohttp and websockets
+	dependency versions.
+- Added a GitHub Actions pytest matrix for Python 3.9 through 3.13.
 
 ### Tests
 
@@ -36,3 +41,4 @@
 	connection replacement, receive timeouts, and failing close callbacks.
 - Added a runtime-isolation test that runs two applications through separate
 	`Runtime.main_loop()` instances.
+- Built the distribution wheel successfully with the configured build backend.

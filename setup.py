@@ -1,69 +1,21 @@
 #!/usr/bin/env python
-from __future__ import print_function
 
-import os
-import sys
+from pathlib import Path
 
-from setuptools import setup, find_packages
-import unittest
+from setuptools import find_packages, setup
 
-name = "nucosObs"
+NAME = "nucosObs"
+ROOT = Path(__file__).parent
 
-rootdir = os.path.abspath(os.path.dirname(__file__))
+version_namespace = {}
+exec((ROOT / NAME / "version.py").read_text(), version_namespace)
 
-long_description = """
-
-Dokumentation: [http://nucosObs.readthedocs.io/]
-
-"""
-
-# Python 3.8 or later needed
-if sys.version_info < (3, 8, 0, 'final', 0):
-    raise SystemExit('Python 3.8 or later is required!')
-
-# Build a list of all project modules
-packages = []
-for dirname, dirnames, filenames in os.walk(name):
-        if '__init__.py' in filenames:
-            packages.append(dirname.replace('/', '.'))
-
-package_dir = {name: name}
-
-# Data files used e.g. in tests
-package_data = {} #{name: [os.path.join(name, 'tests', 'prt.txt')]}
-
-# The current version number - MSI accepts only version X.X.X
-exec(open(os.path.join(name, 'version.py')).read())
-
-print("Version:", version)
-
-# Scripts
-scripts = []
-for dirname, dirnames, filenames in os.walk('scripts'):
-    for filename in filenames:
-        if not filename.endswith('.bat'):
-            scripts.append(os.path.join(dirname, filename))
-
-# Provide bat executables in the tarball (always for Win)
-if 'sdist' in sys.argv or os.name in ['ce', 'nt']:
-    for s in scripts[:]:
-        scripts.append(s + '.bat')
-
-# Data_files (e.g. doc) needs (directory, files-in-this-directory) tuples
-data_files = []
-for dirname, dirnames, filenames in os.walk('doc'):
-        fileslist = []
-        for filename in filenames:
-            fullname = os.path.join(dirname, filename)
-            fileslist.append(fullname)
-        data_files.append(('share/' + name + '/' + dirname, fileslist))
-
-setup(name=name,
-      version=version,  # PEP440
+setup(name=NAME,
+      version=version_namespace["version"],
       description='nucosObs - an observer/observable toolbox based on asyncio',
-      long_description=long_description,
+      long_description=(ROOT / "README.md").read_text(),
+      long_description_content_type="text/markdown",
       url='https://github.com/DocBO/nucosObs',
-      download_url = 'https://github.com/DocBO/nucosObs/tarball/0.0.1',
       author='Oliver Braun',
       author_email='oliver.braun@nucos.de',
       license='MIT',
@@ -71,19 +23,24 @@ setup(name=name,
       classifiers=[
           'Development Status :: 1 - Planning',
           'Environment :: Console',
-          'License :: OSI Approved :: MIT License',
           'Natural Language :: English',
           'Operating System :: OS Independent',
-          'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
           'Programming Language :: Python :: 3.10',
-          'Programming Language :: Python :: 3.11'
+                    'Programming Language :: Python :: 3.11',
+                    'Programming Language :: Python :: 3.12',
+                    'Programming Language :: Python :: 3.13'
       ],
       keywords='observer observable asyncio',
-    python_requires='>=3.8',
-      packages=packages,
-      package_dir=package_dir,
-      package_data=package_data,
-      scripts=scripts,
-    install_requires=['websockets>=15', 'aiohttp']
+            python_requires='>=3.9',
+            packages=find_packages(include=["nucosObs", "nucosObs.*"]),
+            install_requires=['websockets>=15,<16', 'aiohttp>=3.12,<4'],
+            extras_require={
+                    "test": [
+                            "pytest>=8,<9; python_version < '3.10'",
+                            "pytest>=9,<10; python_version >= '3.10'",
+                            "pytest-asyncio>=0.23,<1; python_version < '3.10'",
+                            "pytest-asyncio>=1,<2; python_version >= '3.10'",
+                    ],
+            },
       )
