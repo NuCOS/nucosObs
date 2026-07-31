@@ -32,6 +32,8 @@
 - Declared Python 3.9+ support to match the supported aiohttp and websockets
 	dependency versions.
 - Added a GitHub Actions pytest matrix for Python 3.9 through 3.13.
+- Documented event payloads, sequential delivery, threaded handlers, isolated
+	runtimes, websocket authentication, and supported test workflows in README.
 
 ### Tests
 

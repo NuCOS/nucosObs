@@ -39,6 +39,66 @@ main_loop([])
 
 See the ``examples`` directory for more advanced usage.
 
+## Event Model
+
+An observable delivers each event to every registered observer queue. Events
+can be dictionaries or command strings. Dictionary events use this shape:
+
+```python
+{"name": "method_name", "args": ["first argument", "second argument"]}
+```
+
+Observers process regular async handlers sequentially. A
+`{"action": "stop_observer"}` event stops an observer after its active handler
+has completed.
+
+## Threaded Handlers
+
+Use `@inThread()` for synchronous work that must not block the event loop. The
+handler runs in the runtime's thread pool. With `callback=True`, register an
+async callback for the bound handler in `observer.callbacks`; it runs after the
+threaded method finishes.
+
+```python
+from nucosObs.observer import Observer, inThread
+
+
+class Worker(Observer):
+    @inThread()
+    def calculate(self, value):
+        return value * 2
+```
+
+## Isolated Runtimes
+
+The module-level `main_loop()` API remains available for existing programs. For
+multiple applications in one process, create a `Runtime` and pass it to each
+observable and observer. Each runtime owns its event loop, registries, debug
+state, and thread pool.
+
+```python
+from nucosObs import Runtime
+from nucosObs.observable import Observable
+from nucosObs.observer import Observer
+
+
+runtime = Runtime()
+events = Observable(runtime=runtime)
+worker = Worker("worker", events, runtime=runtime)
+runtime.loop.create_task(events.put({"name": "calculate", "args": [21]}))
+runtime.loop.create_task(events.put({"action": "stop_observer"}))
+runtime.main_loop([])
+runtime.close()
+```
+
+## Websocket Authentication
+
+Both websocket interfaces send an authentication challenge when `doAuth=True`.
+The configured authenticator must provide an async
+`startAuth(message, websocket, nonce)` method and return
+`(connection_id, user)`. Returning a matching connection ID accepts the client;
+returning `None` rejects and closes it. Clients may send regular broker messages
+only after successful authentication.
 
 ## Licence
 MIT License
@@ -49,5 +109,7 @@ No specific platform dependency. Python 3.9 or later is required.
 ## Testing
 Install development dependencies with `pip install -r requirements-dev.txt`,
 then run the test suite with `python -m pytest`.
+
+The repository runs this command in GitHub Actions on Python 3.9 through 3.13.
 
 

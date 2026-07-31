@@ -1,8 +1,8 @@
 # nucosObs Current State Review
 
-### PHASE 1 IN PROGRESS: Repository Baseline and Compatibility Recovery
+### PHASE 1 COMPLETED: Repository Baseline and Compatibility Recovery
 
-**Status**: P0/P1 REMEDIATION COMPLETE; FOLLOW-UP LIFECYCLE WORK REMAINS
+**Status**: P0/P1/P2 REMEDIATION COMPLETE; CI AND DOCUMENTATION ESTABLISHED
 **Date**: July 31, 2026
 **Scope**: Current `master` at `0521e76` (`0.4.17`), including the merge of
 local commit `e1942ea` and upstream compatibility/test work.
@@ -49,8 +49,8 @@ or package installation.
 | Runtime model | Module-global event loop, observer registry, observable registry, debug flag, and thread pool |
 | Core dispatch | `Observable.put()` copies an event to every registered queue; `Observer.observe()` parses and invokes named handlers |
 | Interfaces | `StdinInterface`, `TwoWayInterface`, `WebsocketInterface`, and `AiohttpWebsocketInterface` |
-| Dependency declaration | `setup.py` declares `websockets` and `aiohttp`; `requirements.txt` duplicates them without versions |
-| Test suite | 22 tests collected by pytest, including 9 new regression and loopback integration tests |
+| Dependency declaration | `setup.py` is authoritative; runtime and test extras provide bounded dependencies |
+| Test suite | 30 tests collected by pytest, including regression and loopback integration coverage |
 | Documentation | README offers a minimal example; this review is the first maintained technical-state document |
 
 ## Recent History Assessment
@@ -190,17 +190,16 @@ README, and the helper script, and run the suite on every claimed version.
 **Resolution**: Python 3.8 is now the explicit minimum in packaging and the
 README; `genie.sh` provisions Python 3.8 and invokes pytest.
 
-### P2 - lifecycle behavior lacks integration coverage
+### Resolved P2 - lifecycle behavior lacked integration coverage
 
 **Location**: `tests/`, `nucosObs/observer.py`, websocket interfaces
 
-The expanded suite now covers basic websocket serving, aiohttp client startup,
-closed-connection cleanup, thread-backed handlers, and delivery ordering. It
-still omits authentication acceptance/rejection, replacement of an existing
-authenticated connection, timeout cleanup, and callback failure propagation.
-The global registries and event-loop state are still mutated directly, which
-makes test isolation a design concern. Add focused integration tests for the
-remaining network paths and move runtime state behind an application object.
+The expanded suite covers websocket serving and authentication acceptance and
+rejection, aiohttp client startup, accepted and rejected aiohttp authentication,
+connection replacement, timeout cleanup, close callback failures, thread-backed
+handlers, delivery ordering, and runtime isolation. The default module-level
+API remains process-global for backward compatibility; new applications can use
+`Runtime` to avoid shared registries and event loops.
 
 **Testing commitment**: use pytest fixtures to reset runtime state and add
 one regression test for every defect before or alongside its fix. Add
@@ -224,53 +223,39 @@ remain asynchronous to the event loop through the executor.
 
 ## Improvement Plan
 
-### 1. Expand remaining lifecycle integration coverage
+### 1. Maintain lifecycle integration coverage
 
-- Add aiohttp authentication success, rejection, replacement, and timeout
-  tests using local loopback servers.
-- Test close-callback failures and define whether they should propagate or be
-  logged while cleanup continues.
-- Test WebSocket authentication and server shutdown with multiple clients.
-- Keep adding pytest regression and loopback integration tests before marking
-  each lifecycle item complete.
+- Keep adding pytest regressions for lifecycle defects before or alongside a
+  repair.
+- Retain local loopback tests for network behavior rather than relying only on
+  mocks.
+- Consider multi-client server-shutdown tests when interface shutdown behavior
+  changes.
 
-**Acceptance criteria**: all supported authentication and disconnect paths are
-covered by deterministic local integration tests.
+**Status**: completed for the current authentication and disconnect contract.
 
-### 2. Make lifecycle ownership explicit
+### 2. Extend explicit runtime ownership where needed
 
-- Replace mutable module-global loop coupling with an application/runtime
-  object or dependency-injected loop.
-- Give global observer and observable registries a resettable owner rather
-  than sharing process-wide mutable lists.
-- Define shutdown semantics for observers, scheduled tasks, thread-pool work,
-  interfaces, and pending handler tasks.
+- Use `Runtime` for new applications that require independent observer systems.
+- Consider optional runtime injection for the websocket interface adapters if
+  they need to participate in more than one application per process.
 
-**Acceptance criteria**: two independent runtime instances can execute in one
-process without queue or loop cross-contamination.
+**Status**: completed for observers and observables; the regression suite runs
+two isolated `Runtime.main_loop()` instances in one process.
 
-### 3. Make packaging reproducible
+### 3. Keep packaging reproducible
 
-- Declare `python_requires` and dependency ranges in one authoritative place.
-- Remove the obsolete Python 3.5 setup path or update it to the supported
-  matrix.
-- Replace deprecated packaging fields (`description-file`) and remove unused
-  setup-time imports and directory scans where practical.
-- Add a CI matrix for the supported Python versions and dependency API line.
-- Run `python -m pytest` as the primary CI test command; retain unittest
-  collection only while the existing test classes are being migrated.
+- Keep runtime dependency bounds and test extras in `setup.py`.
+- Maintain the GitHub Actions Python 3.9-3.13 pytest matrix.
+- Build a wheel in release validation.
 
-**Acceptance criteria**: a clean virtual environment installs the package and
-runs its smoke suite using the advertised Python and dependency versions.
+**Status**: the package builds successfully with the configured PEP 517 backend.
 
-### 4. Establish user-facing documentation
+### 4. Maintain user-facing documentation
 
-- Expand the README with a current Python/dependency support statement and a
-  correct shutdown example.
-- Document event payload formats, observer concurrency, `inThread`, bridge
-  hooks, and interface authentication expectations.
-- Maintain `docs/CHANGELOG.md` for confirmed user-visible releases only.
-- Keep this review updated until the P0 and P1 items are resolved.
+- Keep README event, threading, runtime, and authentication contracts aligned
+  with implementation changes.
+- Maintain `docs/CHANGELOG.md` for confirmed user-visible releases.
 
 ## Verification Performed
 
@@ -284,11 +269,13 @@ runs its smoke suite using the advertised Python and dependency versions.
   Python 3.13.5.
 - Established the original pytest baseline with `python -m pytest`: 13 tests
   passed in 0.11 seconds using pytest 9.0.2 and pytest-asyncio 1.3.0.
-- After remediation, `python -m pytest` reports 22 passing tests in 0.35
+- After remediation, `python -m pytest` reports 30 passing tests in 0.38
   seconds on Python 3.13.5.
+- Built `nucosobs-0.4.17-py3-none-any.whl` with the configured PEP 517 backend.
 - Inspected installed `websockets` 15.0.1: `serve()` expects a one-argument
   handler, while the package declares a two-argument handler.
 - Confirmed that `AiohttpWebsocketInterface.connect()` has no `websockets`
   module in its globals.
 
-No source code was changed as part of this review.
+The review was updated as remediation progressed; source changes and their
+tests are documented in `docs/CHANGELOG.md`.
