@@ -168,16 +168,13 @@ class Observer():
                     print("parse failed: %s" % item)
                 isCallable = False
             if isCallable:
-                if "inThread" in dir(method):
-                    await self.loop.run_in_executor(pool, method, *args)
-                    if method.callback:
-                        if method in self.callbacks:
-                            await self.callbacks[method]()
-                        else:
-                            raise NoCallbackException(
-                                "No callback known of method %s" % method)
-                else:
-                    await method(*args)
+                aio.ensure_future(method(*args))
+                if hasattr(method, "callback") and method.callback:
+                    if method in self.callbacks:
+                        aio.ensure_future(self.callbacks[method]())
+                    else:
+                        raise NoCallbackException(
+                            "No callback known of method %s" % method)
             elif isinstance(item, dict) and "action" in item:
                 if debug[-1]:
                     print("....", item)

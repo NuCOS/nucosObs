@@ -20,6 +20,7 @@ from nucosObs.observer import broadcast
 class AiohttpWebsocketInterface(object):
     def __init__(self, app, broker, doAuth=False, closeOnClientQuit=False, 
                     authenticator=None, onCloseCallback=None, heartbeat=None,
+                    closeSanely=None,
                     receive_timeout=None, sslClient=None, sslServer=None,
                     route="/ws", backend="default"):
         """
@@ -30,6 +31,7 @@ class AiohttpWebsocketInterface(object):
         self.backend = backend
         self.ws = {}
         self.doAuth = doAuth
+        self.closeSanely = closeSanely
         self.broker = broker
         self.server = None
         self.authenticator = authenticator
@@ -43,6 +45,7 @@ class AiohttpWebsocketInterface(object):
         self.approved = []
         self.receive_timeout = receive_timeout
         self.heartbeat = heartbeat
+        self.ids = []
         self.id_0 = None
         app.router.add_route('GET', route, self.handler)
 
@@ -62,6 +65,19 @@ class AiohttpWebsocketInterface(object):
         if id_ in self.ws:
             await self.ws[id_].send_str(msg)
 
+    async def send_by_client(self, msg, client):
+        """
+        client is the numbering
+        wait until connected
+        """
+        while True:
+            try:
+                id_ = self.ids[client]
+                break
+            except:
+                # print("SEND failed", self.ids, client, msg)
+                await aio.sleep(0.2)
+        await self.ws[id_].send_str(msg)
     async def broadcast(self, msg):
         for id_, ws in self.ws.items():
             try:
@@ -87,7 +103,8 @@ class AiohttpWebsocketInterface(object):
         await ws.prepare(request)
         id_ =  ws.headers.get("Sec-Websocket-Accept")
         self.ws.update({id_: ws})
-        self.id_0 = id_  # store the first connection for easier reference
+        self.id_0 = id_
+        self.ids.append(id_)  # store the first connection for easier reference
         if debug[-1]:
             print("Partner connected")     
             print(self.ws)   
@@ -118,6 +135,16 @@ class AiohttpWebsocketInterface(object):
         if self.server is not None:
             for k in [x for x in self.ws.keys()]:
                 await self.ws[k].close()
+                
+    async def _closeSanely_(self, id_old, user):
+        """
+        protects the hard shutdown if the same user is connected once again
+        """
+        if self.closeSanely:
+            await self.closeSanely(user, id_old)
+            await aio.sleep(3.0)
+        if id_old in self.ws:
+            await self.ws[id_old].close()
 
     async def listener(self, ws, id_):
         user = "unknown"
@@ -135,7 +162,7 @@ class AiohttpWebsocketInterface(object):
                             id_old = self.connectedUser.pop(user)
                             self.isAuthenticated.pop(id_old)
                             try:
-                                await self.ws[id_old].close()
+                                aio.ensure_future(self._closeSanely_(id_old, user))
                             except:
                                 pass
                             finally:
@@ -168,19 +195,22 @@ class AiohttpWebsocketInterface(object):
             await self.shutdown()
         else:
             if self.closeOnClientQuit:
+                self.remove_connection(id_)
                 if debug[-1]:
                     print("client died ...")    
                 if len(self.ws) == 0:
                     await self.broker.put("client exit")
                     await self.shutdown()
-            self.remove_connection(id_)
+                    await self.onCloseCallback(user)
         if debug[-1]:
             print("--- connection of %s stopped " % user)
-        if self.onCloseCallback:
-            await self.onCloseCallback(user)
+        #if self.onCloseCallback:
+        #    await self.onCloseCallback(user)
 
     def remove_connection(self, id_):
         self.ws.pop(id_)
+        if id_ in self.ids:
+            self.ids.remove(id_)
         if id_ in self.isAuthenticated:
             user = self.isAuthenticated.pop(id_)
             if user in self.connectedUser:

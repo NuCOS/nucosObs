@@ -1,5 +1,6 @@
 
 import asyncio as aio
+import sys
 from nucosObs import loop, allObservables
 
 try:
@@ -7,7 +8,7 @@ try:
 except:
     subversion = 8
     
-if subversion >= 10
+if subversion >= 10:
     py11 = True
 else:
     py11 = False
