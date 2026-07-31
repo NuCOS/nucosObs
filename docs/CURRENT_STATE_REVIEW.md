@@ -176,19 +176,18 @@ object refactor.
 
 ### Resolved P1 - supported Python versions are contradictory
 
-**Location**: `README.md`, `setup.py`, `genie.sh`, source files
+**Location**: `README.md`, `setup.py`, source files
 
-The README and setup guard state Python 3.5 support, while the package uses
-f-strings, which require Python 3.6+, and its asyncio changes target modern
-Python. `genie.sh` still creates a Python 3.5 environment. The classifiers
-list Python 3.8 through 3.11 but do not declare `python_requires`; the review
-smoke check used Python 3.13.5.
+The README and setup guard previously stated Python 3.5 support, while the
+package used f-strings and modern asyncio behavior. The prior helper script
+also created an obsolete Python 3.5 environment.
 
 Set an intentional minimum version, add `python_requires`, align classifiers,
-README, and the helper script, and run the suite on every claimed version.
+README, and CI, and run the suite on every claimed version.
 
-**Resolution**: Python 3.8 is now the explicit minimum in packaging and the
-README; `genie.sh` provisions Python 3.8 and invokes pytest.
+**Resolution**: Python 3.11 is the explicit minimum in packaging and README.
+The obsolete helper scripts were removed; CI runs pytest, emits JUnit XML, and
+builds a wheel on Python 3.11 through 3.13.
 
 ### Resolved P2 - lifecycle behavior lacked integration coverage
 
@@ -246,7 +245,7 @@ two isolated `Runtime.main_loop()` instances in one process.
 ### 3. Keep packaging reproducible
 
 - Keep runtime dependency bounds and test extras in `setup.py`.
-- Maintain the GitHub Actions Python 3.9-3.13 pytest matrix.
+- Maintain the GitHub Actions Python 3.11-3.13 pytest matrix.
 - Build a wheel in release validation.
 
 **Status**: the package builds successfully with the configured PEP 517 backend.

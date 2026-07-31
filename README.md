@@ -104,12 +104,12 @@ only after successful authentication.
 MIT License
 
 ## Platforms
-No specific platform dependency. Python 3.9 or later is required.
+No specific platform dependency. Python 3.11 or later is required.
 
 ## Testing
 Install development dependencies with `pip install -r requirements-dev.txt`,
 then run the test suite with `python -m pytest`.
 
-The repository runs this command in GitHub Actions on Python 3.9 through 3.13.
+The repository runs this command in GitHub Actions on Python 3.11 through 3.13.
 
 

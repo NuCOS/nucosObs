@@ -22,18 +22,26 @@
 ### Changed
 
 - Made pytest the primary test runner and added development test dependencies.
-- Declared Python 3.8+ and `websockets>=15` support consistently in packaging,
-	requirements, README, and the helper script.
+- Declared Python 3.11+ and `websockets>=15` support consistently in packaging,
+  requirements, and README.
 - Added `Runtime` for applications that need isolated event loops, observer
 	registries, observable registries, debug state, and thread pools in one
 	process.
 - Modernized package metadata with `pyproject.toml`, build-system metadata,
 	Markdown project descriptions, dependency bounds, and test extras.
-- Declared Python 3.9+ support to match the supported aiohttp and websockets
-	dependency versions.
-- Added a GitHub Actions pytest matrix for Python 3.9 through 3.13.
+- Raised the supported Python baseline to 3.11+ to use modern asyncio and the
+	current pytest toolchain without legacy compatibility branches.
+- Removed obsolete Python-version queue handling now that `asyncio.Queue()` is
+	the sole supported queue construction path.
+- Added a GitHub Actions pytest matrix for Python 3.11 through 3.13 with JUnit
+	output and wheel-build validation.
 - Documented event payloads, sequential delivery, threaded handlers, isolated
 	runtimes, websocket authentication, and supported test workflows in README.
+
+### Removed
+
+- Removed the obsolete `genie.sh` virtualenv/nose2 helper and `aftermath.py`
+	JUnit XML post-processor; CI now provides pytest JUnit output and wheel builds.
 
 ### Tests
 

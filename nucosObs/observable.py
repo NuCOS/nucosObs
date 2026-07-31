@@ -1,19 +1,8 @@
 """Observable helper used by observers to share events."""
 
 import asyncio as aio
-import sys
 import nucosObs
-from nucosObs import allObservables
 
-try:
-    subversion = int(sys.version.split(".")[1])
-except:
-    subversion = 8
-    
-if subversion >= 10:
-    py11 = True
-else:
-    py11 = False
 
 class NoConcurrentObserver(Exception):
     def __init__(self, message):
@@ -33,13 +22,7 @@ class Observable():
 
     def register(self, observer, concurrent=[]):
         if not concurrent:
-            # In modern Python versions the loop parameter is deprecated
-            # and removed. Create queue bound to the current loop.
-            if py11:
-                queue = aio.Queue()
-            else:
-                queue = aio.Queue(loop=self.loop)
-            self.q.update({observer.name: queue})
+            self.q.update({observer.name: aio.Queue()})
             observer._queue = self.q[observer.name]
         else:
             concurrentQueues = []
