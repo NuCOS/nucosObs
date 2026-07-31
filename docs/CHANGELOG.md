@@ -49,6 +49,8 @@
 	handler, parser, send, broadcast, authentication, and close-callback errors.
 - Added `Runtime.shutdown()` for explicit observer shutdown, runtime-owned task
 	cancellation, and an inspectable structured state report.
+- Added `python -m nucosObs` diagnostics with stable human-readable and JSON
+	output for installed versions and default runtime state.
 
 ### Removed
 
@@ -76,3 +78,4 @@
   and rejected websocket authentication.
 - Added shutdown-report regressions for clean, repeated, and scheduled-work
 	cancellation paths.
+- Added subprocess coverage for human-readable and JSON diagnostics output.

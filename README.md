@@ -108,6 +108,12 @@ The configured authenticator must provide an async
 returning `None` rejects and closes it. Clients may send regular broker messages
 only after successful authentication.
 
+## Diagnostics
+
+Run `python -m nucosObs` to print the installed package version, dependency
+versions, supported Python range, and default runtime state. Add `--json` for
+machine-readable output suitable for support reports.
+
 ## License
 
 Distributed under the [MIT License](LICENSE.txt).
