@@ -43,6 +43,7 @@ class AiohttpWebsocketInterface(object):
         self.closeOnClientQuit = closeOnClientQuit
         self.sslClient = sslClient
         self.sslServer = sslServer
+        self.client_session = None
         self.approved = []
         self.receive_timeout = receive_timeout
         self.heartbeat = heartbeat
@@ -97,7 +98,13 @@ class AiohttpWebsocketInterface(object):
             protocol = "wss"
         else:
             protocol = "ws"
-        websocket = await websockets.connect('%s://%s:%s' %(protocol, host, str(port)), ssl=self.sslClient)
+        self.client_session = aiohttp.ClientSession()
+        options = {}
+        if self.sslClient is not None:
+            options["ssl"] = self.sslClient
+        websocket = await self.client_session.ws_connect(
+            '%s://%s:%s' % (protocol, host, str(port)), **options
+        )
         self.ws['client'] = websocket
         await self.listener(websocket, 'client')
 
@@ -138,9 +145,10 @@ class AiohttpWebsocketInterface(object):
         if debug[-1]:
             print("in shutdown process ...")
         await broadcast.put({"name": "broadcast", "args": [{"action": "stop_observer"}]})
-        if self.server is not None:
-            for k in [x for x in self.ws.keys()]:
-                await self.ws[k].close()
+        for websocket in list(self.ws.values()):
+            await websocket.close()
+        if self.client_session is not None and not self.client_session.closed:
+            await self.client_session.close()
                 
     async def _closeSanely_(self, id_old, user):
         """
@@ -201,14 +209,15 @@ class AiohttpWebsocketInterface(object):
         if id_ == "client":
             await self.shutdown()
         else:
+            self.remove_connection(id_)
             if self.closeOnClientQuit:
-                self.remove_connection(id_)
                 if debug[-1]:
                     print("client died ...")    
                 if len(self.ws) == 0:
                     await self.broker.put("client exit")
                     await self.shutdown()
-                    await self.onCloseCallback(user)
+                    if self.onCloseCallback:
+                        await self.onCloseCallback(user)
         if debug[-1]:
             print("--- connection of %s stopped " % user)
         #if self.onCloseCallback:

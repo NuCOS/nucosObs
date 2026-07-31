@@ -68,9 +68,8 @@ class WebsocketInterface(object):
         self.server = await websockets.serve(self.handler, ip, port, ssl=self.sslServer)
         print("started server", self.server)
 
-    async def handler(self, websocket, path):
+    async def handler(self, websocket):
         """Handle a single websocket connection."""
-        host = websocket.host
         if isCR:
             id_ = random(12).decode()
         else:
@@ -102,42 +101,32 @@ class WebsocketInterface(object):
         """Read messages from ``ws`` and route them to the broker."""
         user = "unknown"
         while True:
-            if ws is not None:
-                if ws.open:
-                    try:
-                        msg = await ws.recv()
-                    except:
-                        if id_ == "client":
-                            await self.shutdown()
-                            break
-                        else:
-                            msg = ""
-                    if msg:
-                        if id_ not in self.isAuthenticated and self.doAuth:
-                            id_out, user = await self.authenticator.startAuth(msg, ws, self.nonce[id_])
-                            if id_out is not None and id_out == id_:
-                                self.isAuthenticated.update({id_: user})
-                            else:
-                                self.ws.pop(id_)
-                                ws.close()
-                                break
-                        else:
-                            await self.broker.put(msg)
+            try:
+                msg = await ws.recv()
+            except websockets.ConnectionClosed:
+                if id_ == "client":
+                    await self.shutdown()
                 else:
-                    if id_ == "client":
-                        await self.shutdown()
-                        break
-                    else:
-                        self.ws.pop(id_)
-                        if self.closeOnClientQuit:
-                            if debug[-1]:
-                                print("client died ...")    
-                            if len(self.ws) == 0:
-                                await self.broker.put("client exit")
-                                await self.shutdown()
-                        if id_ in self.isAuthenticated:
-                            self.isAuthenticated.pop(id_)
-                        break
+                    self.ws.pop(id_, None)
+                    if self.closeOnClientQuit:
+                        if debug[-1]:
+                            print("client died ...")
+                        if len(self.ws) == 0:
+                            await self.broker.put("client exit")
+                            await self.shutdown()
+                    self.isAuthenticated.pop(id_, None)
+                break
+
+            if id_ not in self.isAuthenticated and self.doAuth:
+                id_out, user = await self.authenticator.startAuth(msg, ws, self.nonce[id_])
+                if id_out is not None and id_out == id_:
+                    self.isAuthenticated.update({id_: user})
+                else:
+                    self.ws.pop(id_, None)
+                    await ws.close()
+                    break
+            else:
+                await self.broker.put(msg)
 
         if debug[-1]:
             print("--- connection of %s stopped " % user)

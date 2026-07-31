@@ -2,7 +2,8 @@
 
 import asyncio as aio
 import sys
-from nucosObs import loop, allObservables
+import nucosObs
+from nucosObs import allObservables
 
 try:
     subversion = int(sys.version.split(".")[1])
@@ -25,7 +26,7 @@ class Observable():
 
     """
     def __init__(self):
-        self.loop = loop
+        self.loop = nucosObs.loop
         self.q = {}
         allObservables.append(self)
 

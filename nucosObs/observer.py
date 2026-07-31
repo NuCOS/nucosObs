@@ -2,7 +2,8 @@
 
 import asyncio as aio
 
-from nucosObs import loop, allObs, pool, debug, allObservables
+import nucosObs
+from nucosObs import allObs, pool, debug, allObservables
 from nucosObs.observable import Observable
 
 
@@ -55,7 +56,7 @@ class Observer():
         """
         self.name = name
         self._queue = None
-        self.loop = loop
+        self.loop = nucosObs.loop
         allObs.append(self)
         observable.register(self, concurrent)
         self.callbacks = {}
@@ -130,7 +131,7 @@ class Observer():
     def startSchedule(self):
         # print("START schedule")
         self.stopScheduleLoop = False
-        loop.create_task(self.scheduleLoop())
+        self.loop.create_task(self.scheduleLoop())
 
     def stopSchedule(self):
         self.stopScheduleLoop = True
@@ -170,10 +171,13 @@ class Observer():
                     print("parse failed: %s" % item)
                 isCallable = False
             if isCallable:
-                aio.ensure_future(method(*args))
+                if hasattr(method, "inThread"):
+                    await aio.get_running_loop().run_in_executor(pool, method, *args)
+                else:
+                    await method(*args)
                 if hasattr(method, "callback") and method.callback:
                     if method in self.callbacks:
-                        aio.ensure_future(self.callbacks[method]())
+                        await self.callbacks[method]()
                     else:
                         raise NoCallbackException(
                             "No callback known of method %s" % method)

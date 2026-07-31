@@ -11,14 +11,14 @@ fi
 ###################################
 echo "----------------------------------------------------"
 {
-conda create --name $PACKAGE'3_5' python=3.5 -y
-source activate $PACKAGE'3_5'
+conda create --name $PACKAGE'3_8' python=3.8 -y
+source activate $PACKAGE'3_8'
 } || { 
 virtualenv -p $(which python3) $VENV/py3
 source $VENV/py3/bin/activate 
 }
 pip install --upgrade pip
-pip install nose2
+pip install -r requirements-dev.txt
 python setup.py sdist
 
 ###################################
@@ -36,8 +36,7 @@ python setup.py install
 echo "----------------------------------------------------"
 sleep 1
 echo "now run test in py3"
-nose2 --plugin nose2.plugins.junitxml --junit-xml
-python aftermath.py nose2-junit.xml py3
+python -m pytest
 echo "test done in:"
 python info.py
 sleep 3

@@ -3,7 +3,8 @@
 import sys
 import asyncio as aio
 
-from nucosObs import loop, debug
+import nucosObs
+from nucosObs import debug
 from nucosObs.observer import broadcast
 
 class TwoWayInterface(object):
@@ -11,7 +12,7 @@ class TwoWayInterface(object):
 
     def __init__(self, observables_dict, send_all=False):
         """Create interface with mapping of names to observables."""
-        self.loop = loop
+        self.loop = nucosObs.loop
         # Remove deprecated loop parameter when creating the queue
         self.q = aio.Queue()
         self.observables_dict = observables_dict

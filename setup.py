@@ -17,9 +17,9 @@ Dokumentation: [http://nucosObs.readthedocs.io/]
 
 """
 
-# Python 3.5 or later needed
-if sys.version_info < (3, 5, 0, 'final', 0):
-    raise SystemExit('Python 3.5 or later is required!')
+# Python 3.8 or later needed
+if sys.version_info < (3, 8, 0, 'final', 0):
+    raise SystemExit('Python 3.8 or later is required!')
 
 # Build a list of all project modules
 packages = []
@@ -80,9 +80,10 @@ setup(name=name,
           'Programming Language :: Python :: 3.11'
       ],
       keywords='observer observable asyncio',
+    python_requires='>=3.8',
       packages=packages,
       package_dir=package_dir,
       package_data=package_data,
       scripts=scripts,
-      install_requires=['websockets', 'aiohttp']
+    install_requires=['websockets>=15', 'aiohttp']
       )

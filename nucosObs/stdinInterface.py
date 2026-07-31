@@ -3,7 +3,8 @@
 import sys
 import asyncio as aio
 
-from nucosObs import loop, debug
+import nucosObs
+from nucosObs import debug
 from nucosObs.observer import broadcast
 
 class StdinInterface(object):
@@ -11,7 +12,7 @@ class StdinInterface(object):
 
     def __init__(self, observable):
         """Create the interface and attach ``observable`` for output."""
-        self.loop = loop
+        self.loop = nucosObs.loop
         # `asyncio.Queue` does not take a loop parameter since Python 3.8
         # and specifying it raises an exception on modern versions.
         self.q = aio.Queue()
