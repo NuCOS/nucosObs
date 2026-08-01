@@ -18,7 +18,16 @@ pip install nucosObs
 
 
 ## Documentation
-The project ships a small but handy toolbox to build applications using
+
+A comprehensive user guide covering beginner to expert workflows is available:
+
+➡️ **[User Guide — docs/USER_GUIDE.md](docs/USER_GUIDE.md)**
+
+The guide includes tutorials for basic observer patterns, scheduling, threaded
+handlers, websocket interfaces, authentication, multi-tenant runtimes, error
+handling, and production deployments.
+
+The project also ships a small but handy toolbox to build applications using
 the observer/observable pattern with ``asyncio``.  It contains helper
 classes for observers, observables and a couple of interfaces (stdin,
 websockets and aiohttp based websockets) to communicate with running
