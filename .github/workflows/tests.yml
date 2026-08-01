@@ -21,7 +21,7 @@ jobs:
       - run: >-
           python -m pytest --junitxml=test-results/pytest.xml
           --cov=nucosObs --cov-report=term --cov-report=xml:coverage.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.python-version }}
           path: coverage.xml
