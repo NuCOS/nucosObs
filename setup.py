@@ -37,7 +37,7 @@ setup(name=NAME,
       keywords='observer observable asyncio',
           python_requires='>=3.11',
           packages=find_packages(include=["nucosObs", "nucosObs.*"]),
-          install_requires=['websockets>=15,<16', 'aiohttp>=3.12,<4'],
+          install_requires=['websockets>=15,<17', 'aiohttp>=3.12,<4'],
           extras_require={
                   "test": [
                       "pytest>=9,<10",
